@@ -1,0 +1,150 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    --background: 330 40% 98%;
+    --foreground: 340 20% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 340 20% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 340 20% 15%;
+
+    /* Happy Pink Primary */
+    --primary: 330 70% 75%;
+    --primary-foreground: 330 20% 15%;
+    --primary-glow: 330 75% 85%;
+
+    /* Soft Blue Secondary */
+    --secondary: 210 65% 75%;
+    --secondary-foreground: 210 20% 20%;
+
+    /* Sunny Yellow Accent */
+    --accent: 45 80% 75%;
+    --accent-foreground: 45 25% 20%;
+
+    --muted: 330 25% 94%;
+    --muted-foreground: 330 15% 50%;
+
+    --destructive: 0 70% 72%;
+    --destructive-foreground: 0 20% 15%;
+
+    --border: 330 25% 90%;
+    --input: 330 25% 92%;
+    --ring: 330 70% 75%;
+
+    --radius: 1rem;
+
+    /* Glassmorphic effects */
+    --glass-bg: 0 0% 100% / 0.7;
+    --glass-border: 330 25% 90% / 0.3;
+    
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(330 70% 75%), hsl(210 65% 75%));
+    --gradient-accent: linear-gradient(135deg, hsl(45 80% 75%), hsl(330 70% 75%));
+    --gradient-card: linear-gradient(135deg, hsl(0 0% 100% / 0.9), hsl(330 40% 98% / 0.8));
+    
+    /* Shadows */
+    --shadow-soft: 0 8px 32px hsl(330 60% 75% / 0.15);
+    --shadow-glow: 0 0 40px hsl(330 70% 75% / 0.3);
+    
+    /* Animations */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .dark {
+    --background: 330 20% 12%;
+    --foreground: 330 15% 92%;
+
+    --card: 330 18% 16%;
+    --card-foreground: 330 15% 92%;
+
+    --popover: 330 18% 16%;
+    --popover-foreground: 330 15% 92%;
+
+    --primary: 330 60% 65%;
+    --primary-foreground: 330 15% 95%;
+    --primary-glow: 330 65% 75%;
+
+    --secondary: 210 55% 65%;
+    --secondary-foreground: 210 15% 92%;
+
+    --accent: 45 70% 65%;
+    --accent-foreground: 45 20% 15%;
+
+    --muted: 330 15% 22%;
+    --muted-foreground: 330 12% 62%;
+
+    --destructive: 0 60% 60%;
+    --destructive-foreground: 0 15% 92%;
+
+    --border: 330 15% 24%;
+    --input: 330 15% 22%;
+    --ring: 330 60% 65%;
+
+    --glass-bg: 330 18% 16% / 0.7;
+    --glass-border: 330 15% 30% / 0.3;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    background: linear-gradient(135deg, hsl(330 40% 98%), hsl(210 55% 97%), hsl(45 70% 97%));
+    background-attachment: fixed;
+  }
+
+  .dark body {
+    background: linear-gradient(135deg, hsl(330 20% 12%), hsl(210 25% 14%), hsl(45 20% 13%));
+    background-attachment: fixed;
+  }
+}
+
+@layer utilities {
+  .glass {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+  }
+  
+  .glass-card {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  }
+
+  .gradient-primary {
+    background: linear-gradient(135deg, hsl(330 70% 75%), hsl(210 65% 75%));
+  }
+
+  .gradient-accent {
+    background: linear-gradient(135deg, hsl(45 80% 75%), hsl(330 70% 75%));
+  }
+
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-20px);
+    }
+  }
+}
