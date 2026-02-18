@@ -2,7 +2,7 @@ package mk.ukim.finki.timski.coudy.model.domain;
 
 import jakarta.persistence.*;
 import lombok.Data;
-import org.springframework.web.bind.support.SessionStatus;
+import mk.ukim.finki.timski.coudy.model.enumerations.SessionStatus;
 
 import java.time.LocalDateTime;
 

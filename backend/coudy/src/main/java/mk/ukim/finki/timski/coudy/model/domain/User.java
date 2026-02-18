@@ -3,12 +3,10 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
 import mk.ukim.finki.timski.coudy.model.enumerations.Role;
-import org.jspecify.annotations.Nullable;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 
 @Data
 @Entity
@@ -32,7 +30,15 @@ public class User implements UserDetails {
     @Enumerated(value = EnumType.STRING)
     private Role role;
 
-    public User(String username, String password, String name, String surname, Role role,Integer points) {
+    public User(String username, String password, String name, String surname, Role role) {
+        this.username = username;
+        this.password = password;
+        this.name = name;
+        this.surname = surname;
+        this.role = role;
+    }
+
+    public User(String username, String password, String name, String surname, Integer points) {
         this.username = username;
         this.password = password;
         this.name = name;
