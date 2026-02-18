@@ -2,10 +2,12 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Calendar, Clock, AlertTriangle, TrendingUp, Plus } from "lucide-react";
+import { Calendar, Clock, AlertTriangle, TrendingUp, Plus, CalendarDays } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 
 const Deadlines = () => {
+  const navigate = useNavigate();
   const [panicMeter] = useState(58);
 
   const deadlines = [
@@ -101,10 +103,20 @@ const Deadlines = () => {
               </h1>
               <p className="text-muted-foreground mt-2">Stay on top of your assignments</p>
             </div>
-            <Button className="gradient-primary border-0">
-              <Plus className="w-5 h-5 mr-2" />
-              Add Deadline
-            </Button>
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                className="glass border-0"
+                onClick={() => navigate("/schedule")}
+              >
+                <CalendarDays className="w-5 h-5 mr-2" />
+                View Schedule
+              </Button>
+              <Button className="gradient-primary border-0">
+                <Plus className="w-5 h-5 mr-2" />
+                Add Deadline
+              </Button>
+            </div>
           </div>
         </div>
 

@@ -1,75 +1,109 @@
 import { Card } from "@/components/ui/card";
-import { Calendar } from "lucide-react";
+import { Calendar, Loader2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import scheduleApi, { StudyBlock } from "@/api/scheduleApi";
 
-interface StudyBlock {
-  day: string;
-  startTime: string;
-  endTime: string;
-  subject: string;
-  duration: number;
-}
+const getMonday = (date: Date) => {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  d.setDate(diff);
+  return d.toISOString().split("T")[0];
+};
+
+const DAYS = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"];
+const DAY_LABELS: Record<string, string> = {
+  MONDAY: "Monday", TUESDAY: "Tuesday", WEDNESDAY: "Wednesday",
+  THURSDAY: "Thursday", FRIDAY: "Friday", SATURDAY: "Saturday", SUNDAY: "Sunday",
+};
+
+const PRIORITY_GRADIENT: Record<string, string> = {
+  HIGH: "bg-gradient-to-br from-primary to-primary-glow",
+  MEDIUM: "bg-gradient-to-br from-secondary to-accent",
+  LOW: "bg-gradient-to-br from-accent to-primary",
+};
 
 const StudyTimetable = () => {
-  const timetable: StudyBlock[] = [
-    { day: "Monday", startTime: "09:00", endTime: "11:00", subject: "Mathematics", duration: 2 },
-    { day: "Monday", startTime: "14:00", endTime: "16:00", subject: "Physics", duration: 2 },
-    { day: "Tuesday", startTime: "10:00", endTime: "12:00", subject: "Chemistry", duration: 2 },
-    { day: "Tuesday", startTime: "15:00", endTime: "17:30", subject: "Biology", duration: 2.5 },
-    { day: "Wednesday", startTime: "09:00", endTime: "11:30", subject: "Mathematics", duration: 2.5 },
-    { day: "Wednesday", startTime: "13:00", endTime: "15:00", subject: "History", duration: 2 },
-    { day: "Thursday", startTime: "10:00", endTime: "12:30", subject: "Literature", duration: 2.5 },
-    { day: "Thursday", startTime: "14:00", endTime: "16:00", subject: "Physics", duration: 2 },
-    { day: "Friday", startTime: "09:00", endTime: "11:00", subject: "Chemistry", duration: 2 },
-    { day: "Friday", startTime: "13:00", endTime: "16:00", subject: "Project Work", duration: 3 },
-  ];
+  const weekStart = getMonday(new Date());
 
-  const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-  
-  const getGradientClass = (index: number) => {
-    const gradients = [
-      "bg-gradient-to-br from-primary to-primary-glow",
-      "bg-gradient-to-br from-secondary to-accent",
-      "bg-gradient-to-br from-accent to-primary",
-      "bg-gradient-to-br from-primary-glow to-secondary",
-      "bg-gradient-to-br from-secondary to-primary",
-    ];
-    return gradients[index % gradients.length];
-  };
+  const { data: schedule, isLoading, isError } = useQuery({
+    queryKey: ["schedule", weekStart],
+    queryFn: () => scheduleApi.getForWeek(weekStart),
+    retry: false,
+  });
+
+  if (isLoading) {
+    return (
+      <Card className="glass-card p-6 border-0 flex items-center justify-center min-h-[200px]">
+        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+      </Card>
+    );
+  }
+
+  if (isError || !schedule) {
+    return (
+      <Card className="glass-card p-6 border-0">
+        <div className="flex items-center gap-2 mb-4">
+          <Calendar className="w-5 h-5 text-primary" />
+          <h3 className="text-xl font-bold">Weekly Study Schedule</h3>
+        </div>
+        <p className="text-muted-foreground text-sm text-center py-8">
+          No schedule for this week yet.{" "}
+          <a href="/schedule" className="text-primary underline">Generate one →</a>
+        </p>
+      </Card>
+    );
+  }
+
+  const blocksByDay = DAYS.reduce<Record<string, StudyBlock[]>>((acc, day) => {
+    acc[day] = schedule.studyBlocks.filter((b) => b.day === day);
+    return acc;
+  }, {});
+
+  const activeDays = DAYS.filter((d) => blocksByDay[d].length > 0);
 
   return (
     <Card className="glass-card p-6 border-0">
       <div className="flex items-center gap-2 mb-6">
         <Calendar className="w-5 h-5 text-primary" />
         <h3 className="text-xl font-bold">Weekly Study Schedule</h3>
+        <span className="ml-auto text-xs text-muted-foreground">Week of {weekStart}</span>
       </div>
 
       <div className="space-y-4">
-        {days.map((day, dayIndex) => {
-          const dayBlocks = timetable.filter((block) => block.day === day);
-          const totalHours = dayBlocks.reduce((sum, block) => sum + block.duration, 0);
+        {activeDays.map((day) => {
+          const blocks = blocksByDay[day];
+          const totalMinutes = blocks.reduce((s, b) => s + b.allocatedMinutes, 0);
+          const totalHours = (totalMinutes / 60).toFixed(1);
 
           return (
             <div key={day} className="glass p-4 rounded-2xl">
               <div className="flex justify-between items-center mb-3">
-                <h4 className="font-semibold">{day}</h4>
+                <h4 className="font-semibold">{DAY_LABELS[day]}</h4>
                 <span className="text-xs text-muted-foreground">{totalHours}h total</span>
               </div>
               <div className="space-y-2">
-                {dayBlocks.map((block, blockIndex) => (
+                {blocks.map((block, i) => (
                   <div
-                    key={blockIndex}
-                    className={`${getGradientClass(dayIndex + blockIndex)} p-3 rounded-xl text-white shadow-md`}
+                    key={i}
+                    className={`${PRIORITY_GRADIENT[block.priority] ?? "bg-gradient-to-br from-primary to-secondary"} p-3 rounded-xl text-white shadow-md`}
                   >
                     <div className="flex justify-between items-start">
                       <div>
-                        <p className="font-semibold">{block.subject}</p>
-                        <p className="text-xs opacity-90">
-                          {block.startTime} - {block.endTime}
+                        <p className="font-semibold">{block.deadlineTitle}</p>
+                        <p className="text-xs opacity-75">{block.courseName}</p>
+                        <p className="text-xs opacity-90 mt-1">
+                          {block.startTime.slice(0, 5)} – {block.endTime.slice(0, 5)}
                         </p>
                       </div>
-                      <span className="text-xs bg-white/20 px-2 py-1 rounded">
-                        {block.duration}h
-                      </span>
+                      <div className="flex flex-col items-end gap-1">
+                        <span className="text-xs bg-white/20 px-2 py-1 rounded">
+                          {(block.allocatedMinutes / 60).toFixed(1)}h
+                        </span>
+                        <span className="text-xs bg-white/20 px-2 py-1 rounded">
+                          {block.priority}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 ))}
