@@ -43,7 +43,7 @@ public class User implements UserDetails {
         this.password = password;
         this.name = name;
         this.surname = surname;
-        this.role = role;
+        this.role = Role.ROLE_USER;
         this.points = points;
     }
 
