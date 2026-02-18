@@ -1,10 +1,14 @@
-import { Home, Users, Calendar, Target, Trophy, Award, User, Timer, BookOpen } from "lucide-react";
+import { Home, Users, Calendar, Target, Trophy, User, Timer, BookOpen, LogOut } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/context/AuthContext";
 import ThemeToggle from "./ThemeToggle";
 
 const Navigation = () => {
   const location = useLocation();
+  const { isAuthenticated, logout } = useAuth();
+
+  if (!isAuthenticated) return null;
 
   const links = [
     { to: "/", icon: Home, label: "Dashboard" },
@@ -42,6 +46,13 @@ const Navigation = () => {
                 </Link>
               );
             })}
+            <button
+              onClick={logout}
+              className="flex flex-col md:flex-row items-center gap-1 md:gap-2 px-3 py-2 rounded-xl transition-all text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+            >
+              <LogOut className="w-5 h-5" />
+              <span className="text-xs md:text-sm font-medium">Logout</span>
+            </button>
             <div className="flex flex-col md:flex-row items-center gap-1 md:gap-2 px-3 py-2">
               <ThemeToggle />
             </div>

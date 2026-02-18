@@ -4,6 +4,7 @@ import mk.ukim.finki.timski.coudy.security.CustomUsernamePasswordAuthenticationP
 import mk.ukim.finki.timski.coudy.web.filters.JwtFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -38,7 +39,7 @@ public class JwtSecurityWebConfig {
         corsConfiguration.setAllowedOrigins(List.of("http://localhost:3000"));
         corsConfiguration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         corsConfiguration.setAllowedHeaders(List.of("*"));
-        corsConfiguration.setAllowCredentials(true);  // ✅ ДОДАЈ!
+        corsConfiguration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", corsConfiguration);
@@ -53,6 +54,9 @@ public class JwtSecurityWebConfig {
                         corsCustomizer.configurationSource(corsConfigurationSource())
                 )
                 .authorizeHttpRequests(auth -> auth
+                        // Allow CORS preflight requests
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
                         .requestMatchers(
                                 // Swagger UI
                                 "/swagger-ui/**",
