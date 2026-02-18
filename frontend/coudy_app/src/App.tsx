@@ -17,6 +17,7 @@ import Habits from "./pages/Habits";
 import Achievements from "./pages/Achievements";
 import Certificates from "./pages/Certificates";
 import Profile from "./pages/Profile";
+import Schedule from "./pages/Schedule";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import NotFound from "./pages/NotFound";
@@ -46,6 +47,7 @@ const App = () => (
                 <Route path="/achievements" element={<ProtectedRoute><Achievements /></ProtectedRoute>} />
                 <Route path="/certificates" element={<ProtectedRoute><Certificates /></ProtectedRoute>} />
                 <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+                <Route path="/schedule" element={<ProtectedRoute><Schedule /></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </div>
