@@ -2,8 +2,6 @@ package mk.ukim.finki.timski.coudy.model.domain;
 
 import jakarta.persistence.*;
 import lombok.Data;
-import mk.ukim.finki.timski.coudy.model.enumerations.Status;
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
