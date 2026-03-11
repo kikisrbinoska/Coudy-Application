@@ -1,0 +1,67 @@
+package mk.ukim.finki.timski.coudy.service.domain.impl;
+
+import mk.ukim.finki.timski.coudy.model.domain.Habit;
+import mk.ukim.finki.timski.coudy.model.domain.HabitLog;
+import mk.ukim.finki.timski.coudy.model.domain.User;
+import mk.ukim.finki.timski.coudy.model.exceptions.InvalidArgumentsException;
+import mk.ukim.finki.timski.coudy.repository.HabitLogRepository;
+import mk.ukim.finki.timski.coudy.service.domain.HabitLogService;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+public class HabitLogServiceImpl implements HabitLogService {
+
+    private final HabitLogRepository habitLogRepository;
+
+    public HabitLogServiceImpl(HabitLogRepository habitLogRepository) {
+        this.habitLogRepository = habitLogRepository;
+    }
+
+    @Override
+    public List<HabitLog> findAll() {
+        return habitLogRepository.findAll();
+    }
+
+    @Override
+    public List<HabitLog> findAllByHabit(Habit habit) {
+        return habitLogRepository.findAllByHabit(habit);
+    }
+
+    @Override
+    public List<HabitLog> findAllByUser(User user) {
+        return habitLogRepository.findAllByUser(user);
+    }
+
+    @Override
+    public HabitLog findById(Long id) {
+        return habitLogRepository.findById(id).orElseThrow(InvalidArgumentsException::new);
+    }
+
+    @Override
+    public HabitLog create(HabitLog habitLog) {
+        HabitLog log = new HabitLog();
+        return habitLogRepository.save(log);
+    }
+
+    @Override
+    public HabitLog update(Long id, HabitLog habitLog) {
+        HabitLog log = habitLogRepository.findById(id).orElseThrow(InvalidArgumentsException::new);
+        log.setHabit(habitLog.getHabit());
+        log.setUser(habitLog.getUser());
+        log.setDate(habitLog.getDate());
+        log.setCompleted(habitLog.getCompleted());
+        log.setDifficultyRating(habitLog.getDifficultyRating());
+        log.setNotes(habitLog.getNotes());
+        log.setTimeSpentMinutes(habitLog.getTimeSpentMinutes());
+
+        return habitLogRepository.save(log);
+    }
+
+    @Override
+    public void delete(Long id) {
+        habitLogRepository.deleteById(id);
+
+    }
+}
