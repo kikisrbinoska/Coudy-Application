@@ -1,6 +1,6 @@
 package mk.ukim.finki.timski.coudy.service.domain;
 
-
+import mk.ukim.finki.timski.coudy.dto.WeeklySummaryDto;
 import mk.ukim.finki.timski.coudy.model.domain.Habit;
 import mk.ukim.finki.timski.coudy.model.domain.HabitLog;
 import mk.ukim.finki.timski.coudy.model.domain.User;
@@ -15,4 +15,5 @@ public interface HabitLogService {
     HabitLog create(HabitLog habitLog);
     HabitLog update(Long id, HabitLog habitLog);
     void delete(Long id);
+    List<WeeklySummaryDto> getWeeklySummary(User user);
 }
