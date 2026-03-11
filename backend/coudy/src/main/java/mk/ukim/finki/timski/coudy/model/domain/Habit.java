@@ -21,6 +21,8 @@ public class Habit {
 
     private String name;
 
+    private String icon;
+
     @Enumerated(EnumType.STRING)
     private HabitCategory category;
 

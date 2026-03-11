@@ -1,8 +1,10 @@
 package mk.ukim.finki.timski.coudy.web.controllers;
 
+import mk.ukim.finki.timski.coudy.dto.WeeklySummaryDto;
 import mk.ukim.finki.timski.coudy.model.domain.HabitLog;
+import mk.ukim.finki.timski.coudy.model.domain.User;
 import mk.ukim.finki.timski.coudy.service.domain.HabitLogService;
-import org.springframework.stereotype.Controller;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,8 +19,8 @@ public class HabitLogController {
     }
 
     @GetMapping
-    public List<HabitLog> findAll() {
-        return habitLogService.findAll();
+    public List<HabitLog> findAll(@AuthenticationPrincipal User user) {
+        return habitLogService.findAllByUser(user);
     }
 
     @GetMapping("/{id}")
@@ -26,17 +28,23 @@ public class HabitLogController {
         return habitLogService.findById(id);
     }
 
-    @PostMapping("/add")
-    public HabitLog create(@RequestParam HabitLog habitLog) {
+    @PostMapping
+    public HabitLog create(@RequestBody HabitLog habitLog) {
         return habitLogService.create(habitLog);
     }
 
-    @PostMapping("/{id}")
-    public HabitLog update(@PathVariable Long id,@RequestParam HabitLog habitLog) {
-        return habitLogService.update(id,habitLog);
+    @PutMapping("/{id}")
+    public HabitLog update(@PathVariable Long id, @RequestBody HabitLog habitLog) {
+        return habitLogService.update(id, habitLog);
     }
 
-    public void delete (@PathVariable Long id) {
+    @DeleteMapping("/{id}")
+    public void delete(@PathVariable Long id) {
         habitLogService.delete(id);
+    }
+
+    @GetMapping("/weekly-summary")
+    public List<WeeklySummaryDto> weeklySummary(@AuthenticationPrincipal User user) {
+        return habitLogService.getWeeklySummary(user);
     }
 }
