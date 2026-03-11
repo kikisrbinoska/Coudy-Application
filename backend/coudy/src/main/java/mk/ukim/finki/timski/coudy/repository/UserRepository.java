@@ -36,6 +36,4 @@ public interface UserRepository extends JpaRepository<User, String> {
 
     @Query("select u.username, u.name, u.surname from User u")
     List<UserProjection> takeUsernameAndNameAndSurnameByProjection();
-
 }
-
