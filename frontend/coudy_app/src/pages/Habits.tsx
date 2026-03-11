@@ -1,94 +1,137 @@
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Target, Flame, TrendingUp, Plus, CheckCircle2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Target, Flame, TrendingUp, Plus, CheckCircle2, Trash2, Loader2 } from "lucide-react";
+import habitApi, {
+  HabitDto,
+  WeeklySummary,
+  HabitCategory,
+  TargetFrequency,
+  CreateHabitRequest,
+} from "@/api/habitApi";
+
+const CATEGORY_LABELS: Record<HabitCategory, string> = {
+  ACADEMIC: "Academic",
+  WELLNESS: "Wellness",
+  LIFE_BALANCE: "Life Balance",
+};
+
+const CATEGORY_COLORS: Record<HabitCategory, string> = {
+  ACADEMIC: "bg-primary text-primary-foreground",
+  WELLNESS: "bg-accent text-accent-foreground",
+  LIFE_BALANCE: "bg-secondary text-secondary-foreground",
+};
+
+const DEFAULT_ICON = "⭐";
 
 const Habits = () => {
-  const habits = [
-    {
-      id: 1,
-      name: "Morning Review",
-      category: "Academic",
-      streak: 23,
-      longestStreak: 45,
-      completionRate: 92,
-      completed: true,
-      icon: "📚",
-    },
-    {
-      id: 2,
-      name: "Exercise",
-      category: "Wellness",
-      streak: 15,
-      longestStreak: 30,
-      completionRate: 78,
-      completed: true,
-      icon: "💪",
-    },
-    {
-      id: 3,
-      name: "Study 2+ Hours",
-      category: "Academic",
-      streak: 0,
-      longestStreak: 18,
-      completionRate: 85,
-      completed: false,
-      icon: "⏰",
-    },
-    {
-      id: 4,
-      name: "Water Intake (8 cups)",
-      category: "Wellness",
-      streak: 30,
-      longestStreak: 30,
-      completionRate: 95,
-      completed: true,
-      icon: "💧",
-    },
-    {
-      id: 5,
-      name: "8 Hours Sleep",
-      category: "Wellness",
-      streak: 12,
-      longestStreak: 21,
-      completionRate: 71,
-      completed: true,
-      icon: "😴",
-    },
-    {
-      id: 6,
-      name: "Note Organization",
-      category: "Academic",
-      streak: 7,
-      longestStreak: 14,
-      completionRate: 68,
-      completed: false,
-      icon: "📝",
-    },
-  ];
+  const [habits, setHabits] = useState<HabitDto[]>([]);
+  const [weekData, setWeekData] = useState<WeeklySummary[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [completingId, setCompletingId] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [form, setForm] = useState<CreateHabitRequest>({
+    name: "",
+    icon: DEFAULT_ICON,
+    category: "ACADEMIC",
+    targetFrequency: "DAILY",
+    reminderTime: null,
+  });
 
-  const categoryColor = (category: string) => {
-    switch (category) {
-      case "Academic":
-        return "bg-primary text-primary-foreground";
-      case "Wellness":
-        return "bg-accent text-accent-foreground";
-      case "Life Balance":
-        return "bg-secondary text-secondary-foreground";
-      default:
-        return "bg-muted text-muted-foreground";
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [habitsData, weeklyData] = await Promise.all([
+        habitApi.getAll(),
+        habitApi.getWeeklySummary(),
+      ]);
+      setHabits(habitsData);
+      setWeekData(weeklyData);
+    } catch {
+      // errors handled by interceptor (401 redirect)
+    } finally {
+      setLoading(false);
     }
   };
 
-  const weekData = [
-    { day: "Mon", completed: 5 },
-    { day: "Tue", completed: 6 },
-    { day: "Wed", completed: 5 },
-    { day: "Thu", completed: 4 },
-    { day: "Fri", completed: 6 },
-    { day: "Sat", completed: 5 },
-    { day: "Sun", completed: 4 },
-  ];
+  const handleComplete = async (id: number) => {
+    setCompletingId(id);
+    try {
+      const updated = await habitApi.completeToday(id);
+      setHabits((prev) => prev.map((h) => (h.id === updated.id ? updated : h)));
+      const weeklyData = await habitApi.getWeeklySummary();
+      setWeekData(weeklyData);
+    } catch {
+      // ignore
+    } finally {
+      setCompletingId(null);
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    setDeletingId(id);
+    try {
+      await habitApi.delete(id);
+      setHabits((prev) => prev.filter((h) => h.id !== id));
+    } catch {
+      // ignore
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleCreate = async () => {
+    if (!form.name.trim()) return;
+    setCreating(true);
+    try {
+      const created = await habitApi.create(form);
+      setHabits((prev) => [...prev, created]);
+      setDialogOpen(false);
+      setForm({ name: "", icon: DEFAULT_ICON, category: "ACADEMIC", targetFrequency: "DAILY", reminderTime: null });
+    } catch {
+      // ignore
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const maxWeekCompleted = Math.max(...weekData.map((d) => d.completed), 1);
+  const completedToday = habits.filter((h) => h.completedToday).length;
+  const longestStreak = habits.length ? Math.max(...habits.map((h) => h.streakLongest)) : 0;
+  const avgCompletion = habits.length
+    ? Math.round(habits.reduce((s, h) => s + h.completionRate, 0) / habits.length)
+    : 0;
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen p-4 md:p-8">
@@ -102,10 +145,77 @@ const Habits = () => {
               </h1>
               <p className="text-muted-foreground mt-2">Build consistency, one day at a time</p>
             </div>
-            <Button className="gradient-primary border-0">
-              <Plus className="w-5 h-5 mr-2" />
-              Add Habit
-            </Button>
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="gradient-primary border-0">
+                  <Plus className="w-5 h-5 mr-2" />
+                  Add Habit
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>New Habit</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 pt-2">
+                  <div className="space-y-1">
+                    <Label>Name</Label>
+                    <Input
+                      placeholder="e.g. Morning Review"
+                      value={form.name}
+                      onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Icon (emoji)</Label>
+                    <Input
+                      placeholder="📚"
+                      value={form.icon}
+                      onChange={(e) => setForm((f) => ({ ...f, icon: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Category</Label>
+                    <Select
+                      value={form.category}
+                      onValueChange={(v) => setForm((f) => ({ ...f, category: v as HabitCategory }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ACADEMIC">Academic</SelectItem>
+                        <SelectItem value="WELLNESS">Wellness</SelectItem>
+                        <SelectItem value="LIFE_BALANCE">Life Balance</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Frequency</Label>
+                    <Select
+                      value={form.targetFrequency}
+                      onValueChange={(v) => setForm((f) => ({ ...f, targetFrequency: v as TargetFrequency }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="DAILY">Daily</SelectItem>
+                        <SelectItem value="WEEKLY">Weekly</SelectItem>
+                        <SelectItem value="CUSTOM">Custom</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button
+                    className="w-full gradient-primary border-0"
+                    onClick={handleCreate}
+                    disabled={creating || !form.name.trim()}
+                  >
+                    {creating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                    Create Habit
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
 
@@ -116,7 +226,7 @@ const Habits = () => {
               <div>
                 <p className="text-sm text-muted-foreground">Today's Progress</p>
                 <p className="text-3xl font-bold mt-1">
-                  {habits.filter((h) => h.completed).length}/{habits.length}
+                  {completedToday}/{habits.length}
                 </p>
               </div>
               <CheckCircle2 className="w-10 h-10 text-primary" />
@@ -126,9 +236,7 @@ const Habits = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Longest Streak</p>
-                <p className="text-3xl font-bold mt-1">
-                  {Math.max(...habits.map((h) => h.longestStreak))}
-                </p>
+                <p className="text-3xl font-bold mt-1">{longestStreak}</p>
               </div>
               <Flame className="w-10 h-10 text-secondary" />
             </div>
@@ -137,9 +245,7 @@ const Habits = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Avg Completion</p>
-                <p className="text-3xl font-bold mt-1">
-                  {Math.round(habits.reduce((sum, h) => sum + h.completionRate, 0) / habits.length)}%
-                </p>
+                <p className="text-3xl font-bold mt-1">{avgCompletion}%</p>
               </div>
               <TrendingUp className="w-10 h-10 text-accent" />
             </div>
@@ -158,114 +264,125 @@ const Habits = () => {
         {/* Weekly Overview */}
         <Card className="glass-card p-6 border-0">
           <h2 className="text-2xl font-bold mb-6">This Week's Activity</h2>
-          <div className="flex justify-around items-end h-48 gap-2">
-            {weekData.map((day) => (
-              <div key={day.day} className="flex-1 flex flex-col items-center gap-2">
-                <div
-                  className="w-full gradient-primary rounded-t-xl transition-all hover:scale-105"
-                  style={{ height: `${(day.completed / 6) * 100}%` }}
-                />
-                <span className="text-sm font-medium">{day.day}</span>
-                <span className="text-xs text-muted-foreground">{day.completed}/6</span>
-              </div>
-            ))}
-          </div>
+          {weekData.length === 0 ? (
+            <p className="text-muted-foreground text-sm">No activity yet this week.</p>
+          ) : (
+            <div className="flex justify-around items-end h-48 gap-2">
+              {weekData.map((day) => (
+                <div key={day.day} className="flex-1 flex flex-col items-center gap-2">
+                  <div
+                    className="w-full gradient-primary rounded-t-xl transition-all hover:scale-105"
+                    style={{
+                      height: `${(day.completed / maxWeekCompleted) * 100}%`,
+                      minHeight: day.completed > 0 ? "8px" : "2px",
+                    }}
+                  />
+                  <span className="text-sm font-medium">{day.day}</span>
+                  <span className="text-xs text-muted-foreground">{day.completed}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </Card>
 
         {/* Habits Grid */}
         <div className="space-y-4">
           <h2 className="text-2xl font-bold">Your Habits</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {habits.map((habit) => (
-              <Card
-                key={habit.id}
-                className={`glass-card p-6 border-0 hover:shadow-xl transition-all ${
-                  habit.completed ? "border-2 border-accent" : ""
-                }`}
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="text-4xl">{habit.icon}</div>
+          {habits.length === 0 ? (
+            <Card className="glass-card p-12 border-0 text-center">
+              <p className="text-muted-foreground">No habits yet. Add your first habit to get started!</p>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {habits.map((habit) => (
+                <Card
+                  key={habit.id}
+                  className={`glass-card p-6 border-0 hover:shadow-xl transition-all ${
+                    habit.completedToday ? "border-2 border-accent" : ""
+                  }`}
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="text-4xl">{habit.icon || DEFAULT_ICON}</div>
+                      <div>
+                        <h3 className="text-xl font-bold">{habit.name}</h3>
+                        <Badge
+                          className={CATEGORY_COLORS[habit.category] ?? "bg-muted text-muted-foreground"}
+                          variant="outline"
+                        >
+                          {CATEGORY_LABELS[habit.category] ?? habit.category}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant={habit.completedToday ? "default" : "outline"}
+                        className={habit.completedToday ? "gradient-accent border-0" : "glass"}
+                        onClick={() => !habit.completedToday && handleComplete(habit.id)}
+                        disabled={habit.completedToday || completingId === habit.id}
+                      >
+                        {completingId === habit.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : habit.completedToday ? (
+                          "✓ Done"
+                        ) : (
+                          "Complete"
+                        )}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => handleDelete(habit.id)}
+                        disabled={deletingId === habit.id}
+                      >
+                        {deletingId === habit.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-4 h-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4 text-center">
                     <div>
-                      <h3 className="text-xl font-bold">{habit.name}</h3>
-                      <Badge className={categoryColor(habit.category)} variant="outline">
-                        {habit.category}
-                      </Badge>
+                      <div className="flex items-center justify-center gap-1 mb-1">
+                        <Flame className="w-4 h-4 text-secondary" />
+                        <p className="text-2xl font-bold">{habit.streakCurrent}</p>
+                      </div>
+                      <p className="text-xs text-muted-foreground">Current Streak</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold">{habit.streakLongest}</p>
+                      <p className="text-xs text-muted-foreground">Best Streak</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold">{habit.completionRate}%</p>
+                      <p className="text-xs text-muted-foreground">Success Rate</p>
                     </div>
                   </div>
-                  <Button
-                    size="sm"
-                    variant={habit.completed ? "default" : "outline"}
-                    className={habit.completed ? "gradient-accent border-0" : "glass"}
-                  >
-                    {habit.completed ? "✓ Done" : "Complete"}
-                  </Button>
-                </div>
 
-                <div className="grid grid-cols-3 gap-4 text-center">
-                  <div>
-                    <div className="flex items-center justify-center gap-1 mb-1">
-                      <Flame className="w-4 h-4 text-secondary" />
-                      <p className="text-2xl font-bold">{habit.streak}</p>
+                  {habit.streakCurrent === 0 && !habit.completedToday && habit.totalCompletions > 0 && (
+                    <div className="glass p-3 rounded-xl text-sm mt-4">
+                      <p>
+                        <strong>⚠️ Streak broken!</strong> Complete today to start building again.
+                      </p>
                     </div>
-                    <p className="text-xs text-muted-foreground">Current Streak</p>
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">{habit.longestStreak}</p>
-                    <p className="text-xs text-muted-foreground">Best Streak</p>
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">{habit.completionRate}%</p>
-                    <p className="text-xs text-muted-foreground">Success Rate</p>
-                  </div>
-                </div>
-
-                {habit.streak === 0 && !habit.completed && (
-                  <div className="glass p-3 rounded-xl text-sm mt-4">
-                    <p>
-                      <strong>⚠️ Streak broken!</strong> Complete today to start building again.
-                    </p>
-                  </div>
-                )}
-                {habit.streak >= 7 && (
-                  <div className="glass p-3 rounded-xl text-sm mt-4">
-                    <p>
-                      <strong>🔥 Great momentum!</strong> You're on a {habit.streak}-day streak!
-                    </p>
-                  </div>
-                )}
-              </Card>
-            ))}
-          </div>
+                  )}
+                  {habit.streakCurrent >= 7 && (
+                    <div className="glass p-3 rounded-xl text-sm mt-4">
+                      <p>
+                        <strong>🔥 Great momentum!</strong> You're on a {habit.streakCurrent}-day streak!
+                      </p>
+                    </div>
+                  )}
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
-
-        {/* AI Insights */}
-        <Card className="glass-card p-6 border-0">
-          <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
-            <TrendingUp className="w-6 h-6 text-accent" />
-            AI Insights
-          </h2>
-          <div className="space-y-3">
-            <div className="glass p-4 rounded-2xl">
-              <p>
-                <strong>✨ Pattern Detected:</strong> You complete habits 80% more on days when you
-                exercise first thing in the morning.
-              </p>
-            </div>
-            <div className="glass p-4 rounded-2xl">
-              <p>
-                <strong>💤 Sleep Impact:</strong> Getting 8+ hours of sleep correlates with 35%
-                higher study effectiveness.
-              </p>
-            </div>
-            <div className="glass p-4 rounded-2xl">
-              <p>
-                <strong>🎯 Recommendation:</strong> You're most consistent with morning habits.
-                Consider moving "Note Organization" to 8 AM for better results.
-              </p>
-            </div>
-          </div>
-        </Card>
       </div>
     </div>
   );
