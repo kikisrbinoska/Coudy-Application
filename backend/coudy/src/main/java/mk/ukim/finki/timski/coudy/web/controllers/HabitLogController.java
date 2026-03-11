@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@Controller
+@RestController
 @RequestMapping("/habit-logs")
 public class HabitLogController {
     private final HabitLogService habitLogService;
