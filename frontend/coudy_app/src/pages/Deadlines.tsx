@@ -250,9 +250,9 @@ const Deadlines = () => {
                           </SelectTrigger>
                           <SelectContent>
                             {courses.length === 0 ? (
-                              <SelectItem value="" disabled>
+                              <div className="px-2 py-1.5 text-sm text-muted-foreground">
                                 No courses available
-                              </SelectItem>
+                              </div>
                             ) : (
                               courses.map((course) => (
                                 <SelectItem key={course.id} value={course.id.toString()}>
