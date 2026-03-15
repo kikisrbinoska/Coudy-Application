@@ -38,7 +38,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     let role = "ROLE_USER";
     try {
       const payload = JSON.parse(atob(jwt.split(".")[1]));
-      if (payload.role) role = payload.role;
+      if (Array.isArray(payload.roles) && payload.roles.length > 0) {
+        const first = payload.roles[0];
+        if (typeof first === "string") {
+          role = first;
+        } else if (typeof first?.authority === "string") {
+          role = first.authority;
+        }
+      } else if (typeof payload.role === "string") {
+        role = payload.role;
+      }
     } catch {
       // fallback to default role
     }

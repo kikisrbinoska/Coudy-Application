@@ -1,13 +1,14 @@
 package mk.ukim.finki.timski.coudy.web.controllers;
 
-import mk.ukim.finki.timski.coudy.model.domain.Course;
+import mk.ukim.finki.timski.coudy.dto.CreateCourseDto;
+import mk.ukim.finki.timski.coudy.dto.DisplayCourseDto;
 import mk.ukim.finki.timski.coudy.model.domain.User;
-import mk.ukim.finki.timski.coudy.model.exceptions.UserNotFoundException;
+import mk.ukim.finki.timski.coudy.model.enumerations.Role;
+import mk.ukim.finki.timski.coudy.service.application.CourseApplicationService;
 import mk.ukim.finki.timski.coudy.service.domain.CourseService;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -15,14 +16,50 @@ import java.util.List;
 @RequestMapping("/api/courses")
 public class CourseController {
     private final CourseService courseService;
+    private final CourseApplicationService courseApplicationService;
 
-    public CourseController(CourseService courseService) {
+    public CourseController(CourseService courseService, CourseApplicationService courseApplicationService) {
         this.courseService = courseService;
+        this.courseApplicationService = courseApplicationService;
     }
 
     @GetMapping
-    public List<Course> findAllByUser(@AuthenticationPrincipal User user) {
-        return courseService.findAllByUser(user);
+    public List<DisplayCourseDto> findAll(@AuthenticationPrincipal User user) {
+        if (user.getRole() == Role.ROLE_ADMIN) {
+            return DisplayCourseDto.from(courseService.findAllByUser(user));
+        }
+        return DisplayCourseDto.from(courseService.findAll());
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<DisplayCourseDto> findById(@PathVariable Long id) {
+        return courseApplicationService.findById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @PostMapping
+    public ResponseEntity<DisplayCourseDto> create(@RequestBody CreateCourseDto courseDto,
+                                                    @AuthenticationPrincipal User user) {
+        CreateCourseDto withUser = new CreateCourseDto(courseDto.code(), courseDto.name(), user.getUsername());
+        return courseApplicationService.save(withUser)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.badRequest().build());
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<DisplayCourseDto> update(@PathVariable Long id,
+                                                    @RequestBody CreateCourseDto courseDto,
+                                                    @AuthenticationPrincipal User user) {
+        CreateCourseDto withUser = new CreateCourseDto(courseDto.code(), courseDto.name(), user.getUsername());
+        return courseApplicationService.update(id, withUser)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        courseApplicationService.deleteById(id);
+        return ResponseEntity.noContent().build();
     }
 }
-
