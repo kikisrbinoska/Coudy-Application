@@ -2,24 +2,46 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Users, Target, Calendar, Trophy, Flame, Award, Clock, BookOpen } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Users, Target, Trophy, Flame, Award, Clock, Gamepad2, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import habitApi, { HabitDto } from "@/api/habitApi";
 import deadlineApi, { Deadline } from "@/api/deadlineApi";
+import gameApi, { GameDto } from "@/api/gameApi";
 
 const Dashboard = () => {
   const { user: authUser } = useAuth();
   const [todayHabits, setTodayHabits] = useState<HabitDto[]>([]);
   const [upcomingDeadlines, setUpcomingDeadlines] = useState<Deadline[]>([]);
+  const [games, setGames] = useState<GameDto[]>([]);
+  const [selectedGame, setSelectedGame] = useState<GameDto | null>(null);
+  const carouselRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     habitApi.getAll().then(setTodayHabits).catch(() => {});
     deadlineApi.getAll()
       .then((data) => setUpcomingDeadlines(data.filter((d) => d.status !== "COMPLETED")))
       .catch(() => {});
+    gameApi.getAll().then(setGames).catch(() => {});
   }, []);
+
+  const scrollCarousel = (direction: "left" | "right") => {
+    if (carouselRef.current) {
+      carouselRef.current.scrollBy({ left: direction === "left" ? -300 : 300, behavior: "smooth" });
+    }
+  };
+
+  const difficultyColor = (difficulty: string) => {
+    switch (difficulty) {
+      case "EASY": return "bg-accent text-accent-foreground";
+      case "MEDIUM": return "bg-secondary text-secondary-foreground";
+      case "HARD": return "bg-destructive text-destructive-foreground";
+      case "EXPERT": return "bg-primary text-primary-foreground";
+      default: return "bg-muted text-muted-foreground";
+    }
+  };
 
   const displayName =
     authUser?.name && authUser?.surname
@@ -136,6 +158,58 @@ const Dashboard = () => {
             </div>
           </Card>
         </div>
+
+        {/* Educational Games Carousel */}
+        <Card className="glass-card p-6 border-0">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold flex items-center gap-2">
+              <Gamepad2 className="w-6 h-6 text-primary" />
+              Educational Games
+            </h2>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" onClick={() => scrollCarousel("left")}>
+                <ChevronLeft className="w-5 h-5" />
+              </Button>
+              <Button variant="ghost" size="icon" onClick={() => scrollCarousel("right")}>
+                <ChevronRight className="w-5 h-5" />
+              </Button>
+            </div>
+          </div>
+
+          {games.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">No games available yet.</p>
+          ) : (
+            <div
+              ref={carouselRef}
+              className="flex gap-4 overflow-x-auto pb-2 scroll-smooth"
+              style={{ scrollbarWidth: "none" }}
+            >
+              {games.map((game) => (
+                <div
+                  key={game.id}
+                  className="glass rounded-2xl p-5 flex-shrink-0 w-56 hover:scale-105 transition-transform cursor-pointer"
+                >
+                  <div className="text-5xl mb-3 text-center">{game.icon}</div>
+                  <h3 className="font-bold text-base mb-1 text-center">{game.name}</h3>
+                  <p className="text-xs text-muted-foreground text-center mb-3 line-clamp-2">{game.description}</p>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-muted-foreground">{game.subject}</span>
+                    <Badge className={`text-xs ${difficultyColor(game.difficulty)}`}>
+                      {game.difficulty}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Lv. {game.level}</span>
+                    <span className="text-xs font-semibold text-primary">+{game.points} SP</span>
+                  </div>
+                  <Button size="sm" className="w-full mt-3 gradient-primary border-0 text-xs" onClick={() => setSelectedGame(game)}>
+                    Play Now
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -270,6 +344,55 @@ const Dashboard = () => {
           </Card>
         </div>
       </div>
+
+      {/* Game Placeholder Modal */}
+      <Dialog open={!!selectedGame} onOpenChange={(open) => !open && setSelectedGame(null)}>
+        <DialogContent className="glass-card border-0 max-w-sm text-center">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">{selectedGame?.name}</DialogTitle>
+          </DialogHeader>
+
+          <div className="flex flex-col items-center gap-4 py-4">
+            {/* Jumping penguin animation */}
+            <style>{`
+              @keyframes penguin-jump {
+                0%, 100% { transform: translateY(0) rotate(0deg); }
+                25%       { transform: translateY(-32px) rotate(-8deg); }
+                50%       { transform: translateY(-40px) rotate(0deg); }
+                75%       { transform: translateY(-32px) rotate(8deg); }
+              }
+              @keyframes shadow-pulse {
+                0%, 100% { transform: scaleX(1); opacity: 0.4; }
+                50%       { transform: scaleX(0.5); opacity: 0.15; }
+              }
+              .penguin-bounce { animation: penguin-jump 0.8s ease-in-out infinite; }
+              .penguin-shadow { animation: shadow-pulse 0.8s ease-in-out infinite; }
+            `}</style>
+
+            <div className="relative flex flex-col items-center">
+              <div className="penguin-bounce text-7xl select-none">🐧</div>
+              <div className="penguin-shadow w-12 h-3 bg-black/20 rounded-full mt-1 blur-sm" />
+            </div>
+
+            <div>
+              <p className="text-muted-foreground text-sm mb-1">{selectedGame?.description}</p>
+              <div className="flex items-center justify-center gap-3 mt-3">
+                <Badge className={selectedGame ? difficultyColor(selectedGame.difficulty) : ""}>
+                  {selectedGame?.difficulty}
+                </Badge>
+                <span className="text-xs text-muted-foreground">{selectedGame?.subject}</span>
+                <span className="text-xs font-semibold text-primary">+{selectedGame?.points} SP</span>
+              </div>
+            </div>
+
+            <p className="text-xs text-muted-foreground italic">🚧 Game coming soon — stay tuned!</p>
+
+            <Button className="gradient-primary border-0 w-full" onClick={() => setSelectedGame(null)}>
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

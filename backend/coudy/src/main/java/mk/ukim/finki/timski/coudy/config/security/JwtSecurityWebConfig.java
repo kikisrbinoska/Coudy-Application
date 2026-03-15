@@ -80,7 +80,7 @@ public class JwtSecurityWebConfig {
                         // ============================================
                         // USER & ADMIN PATHS
                         // ============================================
-                        .requestMatchers("/api/**", "/habits/**", "/habit-logs/**")
+                        .requestMatchers("/api/**", "/habits/**", "/habit-logs/**", "/games/**")
                         .hasAnyRole("USER", "ADMIN")
 
                         // ============================================
