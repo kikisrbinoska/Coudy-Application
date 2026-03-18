@@ -74,7 +74,10 @@ public class JwtSecurityWebConfig {
                                 // Public API endpoints
                                 "/api/user/register",
                                 "/api/user/login",
-                                "/api/user/logout"
+                                "/api/user/logout",
+
+                                // Quiz endpoints (public for testing)
+                                "/api/quiz/**"
                         ).permitAll()
 
                         // ============================================
