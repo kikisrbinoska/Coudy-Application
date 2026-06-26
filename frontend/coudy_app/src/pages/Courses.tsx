@@ -18,6 +18,7 @@ import {
   Pencil,
   Loader2,
   Brain,
+  Upload,
   ChevronRight,
   CheckCircle2,
   XCircle,
@@ -60,6 +61,10 @@ const Courses = () => {
   const [result, setResult] = useState<QuizResult | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [quizError, setQuizError] = useState<string | null>(null);
+  const [uploadCourse, setUploadCourse] = useState<Course | null>(null);
+  const [uploadFiles, setUploadFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadResult, setUploadResult] = useState<string | null>(null);
 
   useEffect(() => {
     courseApi.getAll()
@@ -98,6 +103,21 @@ const Courses = () => {
       // ignore
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!uploadCourse || uploadFiles.length === 0) return;
+    setUploading(true);
+    setUploadResult(null);
+    try {
+      const res = await courseApi.uploadPresentations(uploadCourse.id, uploadFiles);
+      setUploadResult(`${res.topics_created} topic(s) added to ${res.course}`);
+      setUploadFiles([]);
+    } catch {
+      setUploadResult("Upload failed. Please try again.");
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -469,18 +489,34 @@ const Courses = () => {
                 <div className="flex items-start justify-between mb-4">
                   <Badge className="bg-primary/20 text-primary">{course.code}</Badge>
                   {isAdmin && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="w-8 h-8"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setForm({ code: course.code, name: course.name });
-                        setEditCourse(course);
-                      }}
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </Button>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="w-8 h-8"
+                        title="Upload presentations"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setUploadCourse(course);
+                          setUploadFiles([]);
+                          setUploadResult(null);
+                        }}
+                      >
+                        <Upload className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="w-8 h-8"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setForm({ code: course.code, name: course.name });
+                          setEditCourse(course);
+                        }}
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                    </div>
                   )}
                 </div>
                 <div className="flex items-center gap-3 mb-4">
@@ -497,6 +533,47 @@ const Courses = () => {
               </Card>
             ))}
           </div>
+        )}
+
+        {/* Upload presentations dialog */}
+        {isAdmin && (
+          <Dialog open={!!uploadCourse} onOpenChange={(open) => { if (!open) { setUploadCourse(null); setUploadResult(null); setUploadFiles([]); } }}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Upload Presentations — {uploadCourse?.name}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 mt-2">
+                <p className="text-sm text-muted-foreground">
+                  Upload one or more PDF files. Each file becomes a quiz topic using the filename as the topic name.
+                </p>
+                <input
+                  type="file"
+                  accept=".pdf"
+                  multiple
+                  className="w-full text-sm file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer"
+                  onChange={(e) => setUploadFiles(Array.from(e.target.files ?? []))}
+                />
+                {uploadFiles.length > 0 && (
+                  <ul className="text-xs text-muted-foreground space-y-1">
+                    {uploadFiles.map((f) => <li key={f.name}>📄 {f.name}</li>)}
+                  </ul>
+                )}
+                {uploadResult && (
+                  <p className={`text-sm font-medium ${uploadResult.includes("failed") ? "text-red-400" : "text-green-400"}`}>
+                    {uploadResult}
+                  </p>
+                )}
+                <Button
+                  className="w-full gradient-primary border-0"
+                  onClick={handleUpload}
+                  disabled={uploading || uploadFiles.length === 0}
+                >
+                  {uploading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  {uploading ? "Uploading..." : `Upload ${uploadFiles.length > 0 ? `(${uploadFiles.length} file${uploadFiles.length > 1 ? "s" : ""})` : ""}`}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         )}
 
         {isAdmin && (

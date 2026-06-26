@@ -49,6 +49,19 @@ public class DataInitializer implements ApplicationRunner {
     @Transactional
     public void run(ApplicationArguments args) {
 
+        // Always reload quiz topics (H2 is in-memory, lost on restart)
+        if (quizTopicRepository.count() == 0) {
+            try {
+                InputStream is = new ClassPathResource("quiz_dataset.json").getInputStream();
+                List<QuizTopic> topics = new ObjectMapper()
+                        .readValue(is, new TypeReference<List<QuizTopic>>() {});
+                quizTopicRepository.saveAll(topics);
+                System.out.println("  Quiz topics: " + topics.size() + " topics loaded from quiz_dataset.json");
+            } catch (Exception e) {
+                System.err.println("  Failed to load quiz_dataset.json: " + e.getMessage());
+            }
+        }
+
         if (userRepository.findByUsername("kikis").isPresent()) return;
 
         // ── Users ─────────────────────────────────────────────────────────────
@@ -61,40 +74,22 @@ public class DataInitializer implements ApplicationRunner {
         userRepository.save(admin);
 
         // ── Courses ───────────────────────────────────────────────────────────
-        Course math = new Course();
-        math.setCode("MATH101");
-        math.setName("Mathematics");
-        math.setUser(user);
-        entityManager.persist(math);
-
-        Course os = new Course();
-        os.setCode("CS202");
-        os.setName("Operating Systems");
-        os.setUser(user);
-        entityManager.persist(os);
-
-        Course web = new Course();
-        web.setCode("CS301");
-        web.setName("Web Development");
-        web.setUser(user);
-        entityManager.persist(web);
-
-        Course db = new Course();
-        db.setCode("CS401");
-        db.setName("Database Design");
-        db.setUser(user);
-        entityManager.persist(db);
+        Course intSys = new Course(); intSys.setCode("IS101"); intSys.setName("Integrated Systems"); intSys.setUser(user); entityManager.persist(intSys);
+        Course soa = new Course(); soa.setCode("SOA201"); soa.setName("Service Oriented Architecture"); soa.setUser(user); entityManager.persist(soa);
+        Course st = new Course(); st.setCode("ST301"); st.setName("Software Testing"); st.setUser(user); entityManager.persist(st);
+        Course cd = new Course(); cd.setCode("CD401"); cd.setName("CI/CD"); cd.setUser(user); entityManager.persist(cd);
+        Course ap = new Course(); ap.setCode("AP501"); ap.setName("Advanced Programming"); ap.setUser(user); entityManager.persist(ap);
 
         entityManager.flush();
 
-        // ── Deadlines (this week so schedule generation works) ────────────────
+        // ── Deadlines ────────────────────────────────────────────────────────
         LocalDateTime now = LocalDateTime.now();
 
         Deadline d1 = new Deadline();
         d1.setUser(user);
-        d1.setCourse(math);
-        d1.setTitle("Calculus Assignment");
-        d1.setDescription("Chapter 5 exercises");
+        d1.setCourse(soa);
+        d1.setTitle("SOA Assignment");
+        d1.setDescription("Strategic DDD homework");
         d1.setDueDate(now.plusDays(3));
         d1.setEstimatedHours(4);
         d1.setPriority(Priority.HIGH);
@@ -105,9 +100,9 @@ public class DataInitializer implements ApplicationRunner {
 
         Deadline d2 = new Deadline();
         d2.setUser(user);
-        d2.setCourse(os);
-        d2.setTitle("Process Scheduling Lab");
-        d2.setDescription("Implement Round Robin scheduler");
+        d2.setCourse(st);
+        d2.setTitle("Testing Lab");
+        d2.setDescription("Graph coverage exercises");
         d2.setDueDate(now.plusDays(5));
         d2.setEstimatedHours(6);
         d2.setPriority(Priority.CRITICAL);
@@ -118,9 +113,9 @@ public class DataInitializer implements ApplicationRunner {
 
         Deadline d3 = new Deadline();
         d3.setUser(user);
-        d3.setCourse(web);
-        d3.setTitle("REST API Project");
-        d3.setDescription("Build a Spring Boot REST API");
+        d3.setCourse(ap);
+        d3.setTitle("Java Streams Project");
+        d3.setDescription("Implement functional pipelines");
         d3.setDueDate(now.plusDays(6));
         d3.setEstimatedHours(8);
         d3.setPriority(Priority.MEDIUM);
@@ -201,19 +196,6 @@ public class DataInitializer implements ApplicationRunner {
         g6.setCategory("Puzzle");
         g6.setActive(true);
         gameRepository.save(g6);
-
-        // ── Quiz Topics (from quiz_dataset.json) ──────────────────────────────
-        if (quizTopicRepository.count() == 0) {
-            try {
-                InputStream is = new ClassPathResource("quiz_dataset.json").getInputStream();
-                List<QuizTopic> topics = new ObjectMapper()
-                        .readValue(is, new TypeReference<List<QuizTopic>>() {});
-                quizTopicRepository.saveAll(topics);
-                System.out.println("  Quiz topics: " + topics.size() + " topics loaded from quiz_dataset.json");
-            } catch (Exception e) {
-                System.err.println("  Failed to load quiz_dataset.json: " + e.getMessage());
-            }
-        }
 
         System.out.println("=================================================");
         System.out.println("  Dev data initialized:");
