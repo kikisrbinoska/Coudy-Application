@@ -9,11 +9,13 @@ import mk.ukim.finki.timski.coudy.dto.CreateUserDto;
 import mk.ukim.finki.timski.coudy.dto.DisplayUserDto;
 import mk.ukim.finki.timski.coudy.dto.LoginResponseDto;
 import mk.ukim.finki.timski.coudy.dto.LoginUserDto;
+import mk.ukim.finki.timski.coudy.model.domain.User;
 import mk.ukim.finki.timski.coudy.model.exceptions.InvalidArgumentsException;
 import mk.ukim.finki.timski.coudy.model.exceptions.InvalidUserCredentialsException;
 import mk.ukim.finki.timski.coudy.model.exceptions.PasswordsDoNotMatchException;
 import mk.ukim.finki.timski.coudy.service.application.UserApplicationService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -70,5 +72,12 @@ public class UserController {
     @GetMapping("/logout")
     public void logout(HttpServletRequest request) {
         request.getSession().invalidate();
+    }
+
+    @Operation(summary = "Get current user points", description = "Returns the authenticated user's total points")
+    @ApiResponse(responseCode = "200", description = "Points returned")
+    @GetMapping("/points")
+    public ResponseEntity<Integer> getPoints(@AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(user.getPoints() == null ? 0 : user.getPoints());
     }
 }
