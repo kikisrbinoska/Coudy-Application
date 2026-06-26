@@ -20,6 +20,16 @@ const courseApi = {
 
   update: (id: number, data: CreateCourseRequest) =>
     axiosInstance.put<Course>(`/courses/${id}`, data).then((r) => r.data),
+
+  uploadPresentations: (id: number, files: File[]) => {
+    const form = new FormData();
+    files.forEach((f) => form.append("files", f));
+    return axiosInstance.post<{ course: string; topics_created: number }>(
+      `/courses/${id}/upload`,
+      form,
+      { headers: { "Content-Type": "multipart/form-data" } }
+    ).then((r) => r.data as { course: string; topics_created: number });
+  },
 };
 
 export default courseApi;
