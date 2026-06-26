@@ -1,11 +1,35 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Play, Pause, Square, Plus, Trash2, Music, Image, Loader2, Clock } from "lucide-react";
+import {
+  Play,
+  Pause,
+  Square,
+  Plus,
+  Trash2,
+  Image,
+  Loader2,
+  Clock,
+  Volume2,
+  VolumeX,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import focusApi, { FocusTaskDto, FocusSettingsDto, FocusStatsDto, FocusSessionResponseDto } from "@/api/focusApi";
+import focusApi, {
+  FocusTaskDto,
+  FocusSettingsDto,
+  FocusStatsDto,
+  FocusSessionResponseDto,
+} from "@/api/focusApi";
+
+interface MusicTrack {
+  trackId: number;
+  trackName: string;
+  artistName: string;
+  previewUrl: string;
+  artworkUrl60: string;
+}
 
 const BACKGROUNDS = [
   "linear-gradient(135deg, hsl(330 40% 98%), hsl(210 55% 97%))",
@@ -31,24 +55,50 @@ const themeIndex = (name: string): number => {
 const Focus = () => {
   const [time, setTime] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
+  const [sessionSaving, setSessionSaving] = useState(false);
 
   const [tasks, setTasks] = useState<FocusTaskDto[]>([]);
   const [newTask, setNewTask] = useState("");
   const [taskLoading, setTaskLoading] = useState<Record<number, boolean>>({});
 
   const [totalPoints, setTotalPoints] = useState(0);
-  const [stats, setStats] = useState<FocusStatsDto>({ total_sessions: 0, total_minutes: 0, total_points_earned: 0 });
-  const [settings, setSettings] = useState<FocusSettingsDto>({ musicEnabled: false, backgroundTheme: "THEME_0" });
+  const [stats, setStats] = useState<FocusStatsDto>({
+    total_sessions: 0,
+    total_minutes: 0,
+    total_points_earned: 0,
+  });
+  const [settings, setSettings] = useState<FocusSettingsDto>({
+    musicEnabled: false,
+    backgroundTheme: "THEME_0",
+  });
   const [sessionLog, setSessionLog] = useState<FocusSessionResponseDto[]>([]);
 
-  const [initialLoading, setInitialLoading] = useState(true);
-  const [sessionSaving, setSessionSaving] = useState(false);
+  const [musicTracks, setMusicTracks] = useState<MusicTrack[]>([]);
+  const [selectedTrackIndex, setSelectedTrackIndex] = useState(0);
+  const [musicLoading, setMusicLoading] = useState(false);
 
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [isDark, setIsDark] = useState(
+    document.documentElement.classList.contains("dark")
+  );
+
+  const audioRef = useRef<HTMLAudioElement>(null);
   const { toast } = useToast();
 
   const bgIndex = themeIndex(settings.backgroundTheme);
-  const isDark = document.documentElement.classList.contains("dark");
   const background = isDark ? DARK_BACKGROUNDS[bgIndex] : BACKGROUNDS[bgIndex];
+
+  // Reactive dark mode detection
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setIsDark(document.documentElement.classList.contains("dark"));
+    });
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+    return () => observer.disconnect();
+  }, []);
 
   const loadAll = useCallback(async () => {
     try {
@@ -70,10 +120,30 @@ const Focus = () => {
     }
   }, [toast]);
 
+  const loadMusicTracks = useCallback(async () => {
+    setMusicLoading(true);
+    try {
+      const res = await fetch(
+        "https://itunes.apple.com/search?term=lofi+chill+study&mediaType=music&limit=20&country=us"
+      );
+      const data = await res.json();
+      const tracks = (data.results as MusicTrack[])
+        .filter((t) => t.previewUrl)
+        .slice(0, 8);
+      setMusicTracks(tracks);
+    } catch {
+      // Music is optional; ignore failures silently
+    } finally {
+      setMusicLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     loadAll();
-  }, [loadAll]);
+    loadMusicTracks();
+  }, [loadAll, loadMusicTracks]);
 
+  // Timer interval
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (isRunning) {
@@ -82,12 +152,33 @@ const Focus = () => {
     return () => clearInterval(interval);
   }, [isRunning]);
 
+  // Play/pause when music enabled state changes
+  useEffect(() => {
+    if (!audioRef.current) return;
+    if (settings.musicEnabled) {
+      audioRef.current.play().catch(() => {});
+    } else {
+      audioRef.current.pause();
+    }
+  }, [settings.musicEnabled]);
+
+  // Reload track when selection changes or tracks first load
+  useEffect(() => {
+    if (!audioRef.current || musicTracks.length === 0) return;
+    audioRef.current.load();
+    if (settings.musicEnabled) {
+      audioRef.current.play().catch(() => {});
+    }
+  }, [selectedTrackIndex, musicTracks]);
+
   const formatTime = (seconds: number) => {
     const hrs = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
     return `${hrs.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
+
+  const estimatedPoints = Math.floor(time / 60) * 10;
 
   const handleStart = () => setIsRunning(true);
   const handlePause = () => setIsRunning(false);
@@ -160,18 +251,23 @@ const Focus = () => {
   };
 
   const toggleMusic = async () => {
-    const next: FocusSettingsDto = { ...settings, musicEnabled: !settings.musicEnabled };
+    const next: FocusSettingsDto = {
+      ...settings,
+      musicEnabled: !settings.musicEnabled,
+    };
     try {
       const saved = await focusApi.updateSettings(next);
       setSettings(saved);
-      toast({
-        title: saved.musicEnabled ? "Music Enabled" : "Music Disabled",
-        description: saved.musicEnabled ? "Enjoy your cozy study music" : "Focus music turned off",
-      });
     } catch {
-      toast({ title: "Error", description: "Failed to save music setting.", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: "Failed to save music setting.",
+        variant: "destructive",
+      });
     }
   };
+
+  const selectTrack = (index: number) => setSelectedTrackIndex(index);
 
   const changeTheme = async (index: number) => {
     const next: FocusSettingsDto = { ...settings, backgroundTheme: THEME_NAMES[index] };
@@ -191,11 +287,18 @@ const Focus = () => {
     );
   }
 
+  const currentTrack = musicTracks[selectedTrackIndex];
+
   return (
     <div
       className="min-h-screen p-4 md:p-8 transition-all duration-500"
       style={{ background }}
     >
+      {/* Hidden audio player — rendered only once tracks are available */}
+      {currentTrack && (
+        <audio ref={audioRef} src={currentTrack.previewUrl} loop />
+      )}
+
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Timer Display */}
         <Card className="glass-card p-12 border-0 text-center">
@@ -212,6 +315,14 @@ const Focus = () => {
           >
             {formatTime(time)}
           </div>
+
+          {isRunning && (
+            <p className="text-sm text-muted-foreground mb-4">
+              {estimatedPoints > 0
+                ? `Earning ${estimatedPoints} SP this session...`
+                : "Session in progress..."}
+            </p>
+          )}
 
           <div className="flex justify-center gap-4 mb-6">
             {!isRunning ? (
@@ -269,7 +380,7 @@ const Focus = () => {
           <Card className="glass-card p-6 border-0">
             <div className="flex items-center gap-2 mb-4">
               <Clock className="w-5 h-5 text-primary" />
-              <h3 className="text-xl font-bold">Session History</h3>
+              <h3 className="text-xl font-bold">Today's Sessions</h3>
             </div>
             <div className="space-y-2 max-h-48 overflow-y-auto">
               {sessionLog.map((s, i) => {
@@ -348,19 +459,87 @@ const Focus = () => {
             <h3 className="text-2xl font-bold mb-4">Focus Settings</h3>
 
             <div className="space-y-6">
+              {/* Cozy Music */}
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <Music className="w-5 h-5 text-primary" />
+                    {settings.musicEnabled ? (
+                      <Volume2 className="w-5 h-5 text-primary" />
+                    ) : (
+                      <VolumeX className="w-5 h-5 text-muted-foreground" />
+                    )}
                     <span className="font-medium">Cozy Music</span>
+                    {settings.musicEnabled && currentTrack && (
+                      <span className="text-xs text-muted-foreground">
+                        ♪ Now playing
+                      </span>
+                    )}
                   </div>
                   <Button
                     variant={settings.musicEnabled ? "default" : "outline"}
+                    size="sm"
                     onClick={toggleMusic}
+                    className={
+                      settings.musicEnabled
+                        ? "gradient-primary border-0 text-white"
+                        : ""
+                    }
                   >
                     {settings.musicEnabled ? "On" : "Off"}
                   </Button>
                 </div>
+
+                {musicLoading ? (
+                  <div className="flex items-center gap-2 py-4 justify-center">
+                    <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">
+                      Loading tracks...
+                    </span>
+                  </div>
+                ) : musicTracks.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-2 max-h-52 overflow-y-auto pr-1">
+                    {musicTracks.map((track, index) => (
+                      <button
+                        key={track.trackId}
+                        onClick={() => selectTrack(index)}
+                        className={`flex items-center gap-2 p-2 rounded-xl text-left transition-all border-2 ${
+                          selectedTrackIndex === index
+                            ? "border-primary bg-primary/10"
+                            : "border-border glass hover:border-primary/40"
+                        }`}
+                      >
+                        <img
+                          src={track.artworkUrl60}
+                          alt={track.trackName}
+                          className="w-10 h-10 rounded-lg flex-shrink-0 object-cover"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium truncate leading-tight">
+                            {track.trackName}
+                          </p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {track.artistName}
+                          </p>
+                        </div>
+                        {settings.musicEnabled &&
+                          selectedTrackIndex === index && (
+                            <div className="flex-shrink-0">
+                              <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                            </div>
+                          )}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-3">
+                    No tracks available.
+                  </p>
+                )}
+
+                <p className="text-xs text-muted-foreground mt-2">
+                  Pick a track then press On — 30-second previews loop
+                  continuously.
+                </p>
               </div>
 
               <div>
@@ -385,16 +564,45 @@ const Focus = () => {
               </div>
 
               <div className="glass p-4 rounded-xl">
-                <p className="text-sm text-muted-foreground mb-1">Session Stats</p>
-                <div className="space-y-1">
-                  <p className="text-lg font-bold">
-                    {stats.total_sessions} session{stats.total_sessions !== 1 ? "s" : ""} completed
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {stats.total_minutes} min studied &middot; {stats.total_points_earned} SP earned
-                  </p>
+                <p className="text-sm font-medium mb-3">Session Stats</p>
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  <div>
+                    <p
+                      className="text-2xl font-bold"
+                      style={{
+                        color: isDark ? "hsl(330,60%,70%)" : "hsl(330,80%,42%)",
+                      }}
+                    >
+                      {stats.total_sessions}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Sessions</p>
+                  </div>
+                  <div>
+                    <p
+                      className="text-2xl font-bold"
+                      style={{
+                        color: isDark ? "hsl(210,60%,70%)" : "hsl(210,80%,42%)",
+                      }}
+                    >
+                      {stats.total_minutes}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Minutes</p>
+                  </div>
+                  <div>
+                    <p
+                      className="text-2xl font-bold"
+                      style={{
+                        color: isDark ? "hsl(38,70%,68%)" : "hsl(35,90%,38%)",
+                      }}
+                    >
+                      {stats.total_points_earned}
+                    </p>
+                    <p className="text-xs text-muted-foreground">SP Earned</p>
+                  </div>
                 </div>
-                <p className="text-xs text-muted-foreground mt-2">10 points per minute studied</p>
+                <p className="text-xs text-muted-foreground mt-3 text-center">
+                  10 points per minute studied
+                </p>
               </div>
             </div>
           </Card>

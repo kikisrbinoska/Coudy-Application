@@ -1,3 +1,8 @@
 package mk.ukim.finki.timski.coudy.dto;
 
-public record FocusSettingsDto(boolean musicEnabled, String backgroundTheme) {}
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+public record FocusSettingsDto(
+        @JsonProperty("musicEnabled") boolean musicEnabled,
+        @JsonProperty("backgroundTheme") String backgroundTheme
+) {}
