@@ -9,17 +9,17 @@ export interface FocusTaskDto {
 
 export interface FocusSessionResponseDto {
   id: number;
-  startedAt: string;
-  endedAt: string;
-  durationSeconds: number;
-  pointsEarned: number;
-  newTotalPoints: number;
+  started_at: string;
+  ended_at: string;
+  duration_seconds: number;
+  points_earned: number;
+  new_total_points: number;
 }
 
 export interface FocusStatsDto {
-  totalSessions: number;
-  totalMinutes: number;
-  totalPointsEarned: number;
+  total_sessions: number;
+  total_minutes: number;
+  total_points_earned: number;
 }
 
 export interface FocusSettingsDto {
@@ -45,7 +45,7 @@ const focusApi = {
 
   createSession: (durationSeconds: number) =>
     axiosInstance
-      .post<FocusSessionResponseDto>("/focus/sessions", { durationSeconds })
+      .post<FocusSessionResponseDto>("/focus/sessions", { duration_seconds: durationSeconds })
       .then((r) => r.data),
 
   getStats: () =>

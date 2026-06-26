@@ -1,3 +1,7 @@
 package mk.ukim.finki.timski.coudy.dto;
 
-public record CreateFocusSessionRequest(int durationSeconds) {}
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+public record CreateFocusSessionRequest(
+        @JsonProperty("duration_seconds") Integer durationSeconds
+) {}

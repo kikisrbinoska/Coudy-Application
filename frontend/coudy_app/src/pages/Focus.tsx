@@ -3,9 +3,9 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Play, Pause, Square, Plus, Trash2, Music, Image, Loader2 } from "lucide-react";
+import { Play, Pause, Square, Plus, Trash2, Music, Image, Loader2, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import focusApi, { FocusTaskDto, FocusSettingsDto, FocusStatsDto } from "@/api/focusApi";
+import focusApi, { FocusTaskDto, FocusSettingsDto, FocusStatsDto, FocusSessionResponseDto } from "@/api/focusApi";
 
 const BACKGROUNDS = [
   "linear-gradient(135deg, hsl(330 40% 98%), hsl(210 55% 97%))",
@@ -37,8 +37,9 @@ const Focus = () => {
   const [taskLoading, setTaskLoading] = useState<Record<number, boolean>>({});
 
   const [totalPoints, setTotalPoints] = useState(0);
-  const [stats, setStats] = useState<FocusStatsDto>({ totalSessions: 0, totalMinutes: 0, totalPointsEarned: 0 });
+  const [stats, setStats] = useState<FocusStatsDto>({ total_sessions: 0, total_minutes: 0, total_points_earned: 0 });
   const [settings, setSettings] = useState<FocusSettingsDto>({ musicEnabled: false, backgroundTheme: "THEME_0" });
+  const [sessionLog, setSessionLog] = useState<FocusSessionResponseDto[]>([]);
 
   const [initialLoading, setInitialLoading] = useState(true);
   const [sessionSaving, setSessionSaving] = useState(false);
@@ -100,15 +101,16 @@ const Focus = () => {
     setSessionSaving(true);
     try {
       const result = await focusApi.createSession(elapsed);
-      setTotalPoints(result.newTotalPoints);
+      setTotalPoints(result.new_total_points);
+      setSessionLog((prev) => [result, ...prev]);
       setStats((prev) => ({
-        totalSessions: prev.totalSessions + 1,
-        totalMinutes: prev.totalMinutes + Math.floor(elapsed / 60),
-        totalPointsEarned: prev.totalPointsEarned + result.pointsEarned,
+        total_sessions: prev.total_sessions + 1,
+        total_minutes: prev.total_minutes + Math.floor(elapsed / 60),
+        total_points_earned: prev.total_points_earned + result.points_earned,
       }));
       toast({
         title: "Session Complete!",
-        description: `You earned ${result.pointsEarned} points! Total: ${result.newTotalPoints} SP`,
+        description: `You earned ${result.points_earned} points! Total: ${result.new_total_points} SP`,
       });
     } catch {
       toast({ title: "Error", description: "Failed to save session.", variant: "destructive" });
@@ -262,6 +264,32 @@ const Focus = () => {
           </div>
         </Card>
 
+        {/* Session History */}
+        {sessionLog.length > 0 && (
+          <Card className="glass-card p-6 border-0">
+            <div className="flex items-center gap-2 mb-4">
+              <Clock className="w-5 h-5 text-primary" />
+              <h3 className="text-xl font-bold">Session History</h3>
+            </div>
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {sessionLog.map((s, i) => {
+                const mins = Math.floor(s.duration_seconds / 60);
+                const secs = s.duration_seconds % 60;
+                const when = new Date(s.started_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+                return (
+                  <div key={s.id ?? i} className="flex items-center justify-between glass rounded-xl px-4 py-2 text-sm">
+                    <span className="text-muted-foreground">{when}</span>
+                    <span className="font-medium">
+                      {mins > 0 ? `${mins}m ` : ""}{secs}s
+                    </span>
+                    <span className="text-primary font-bold">+{s.points_earned} SP</span>
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Tasks */}
           <Card className="glass-card p-6 border-0">
@@ -360,10 +388,10 @@ const Focus = () => {
                 <p className="text-sm text-muted-foreground mb-1">Session Stats</p>
                 <div className="space-y-1">
                   <p className="text-lg font-bold">
-                    {stats.totalSessions} session{stats.totalSessions !== 1 ? "s" : ""} completed
+                    {stats.total_sessions} session{stats.total_sessions !== 1 ? "s" : ""} completed
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    {stats.totalMinutes} min studied &middot; {stats.totalPointsEarned} SP earned
+                    {stats.total_minutes} min studied &middot; {stats.total_points_earned} SP earned
                   </p>
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">10 points per minute studied</p>
