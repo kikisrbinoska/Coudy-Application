@@ -1,9 +1,12 @@
 package mk.ukim.finki.timski.coudy.config;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import mk.ukim.finki.timski.coudy.model.domain.Course;
 import mk.ukim.finki.timski.coudy.model.domain.Deadline;
 import mk.ukim.finki.timski.coudy.model.domain.Game;
+import mk.ukim.finki.timski.coudy.model.domain.QuizTopic;
 import mk.ukim.finki.timski.coudy.model.domain.User;
 import mk.ukim.finki.timski.coudy.model.enumerations.DeadlineStatus;
 import mk.ukim.finki.timski.coudy.model.enumerations.Difficulty;
@@ -11,10 +14,12 @@ import mk.ukim.finki.timski.coudy.model.enumerations.Priority;
 import mk.ukim.finki.timski.coudy.model.enumerations.Role;
 import mk.ukim.finki.timski.coudy.repository.DeadlineRepository;
 import mk.ukim.finki.timski.coudy.repository.GameRepository;
+import mk.ukim.finki.timski.coudy.repository.QuizTopicRepository;
 import mk.ukim.finki.timski.coudy.repository.UserRepository;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
@@ -22,7 +27,9 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.InputStream;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Component
 @Profile("dev")
@@ -32,6 +39,7 @@ public class DataInitializer implements ApplicationRunner {
     private final UserRepository userRepository;
     private final DeadlineRepository deadlineRepository;
     private final GameRepository gameRepository;
+    private final QuizTopicRepository quizTopicRepository;
     private final PasswordEncoder passwordEncoder;
 
     @PersistenceContext
@@ -40,6 +48,8 @@ public class DataInitializer implements ApplicationRunner {
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
+
+        if (userRepository.findByUsername("kikis").isPresent()) return;
 
         // ── Users ─────────────────────────────────────────────────────────────
         User user = new User("kikis", passwordEncoder.encode("password123"), "Kiki", "Test", Role.ROLE_USER);
@@ -68,6 +78,12 @@ public class DataInitializer implements ApplicationRunner {
         web.setName("Web Development");
         web.setUser(user);
         entityManager.persist(web);
+
+        Course db = new Course();
+        db.setCode("CS401");
+        db.setName("Database Design");
+        db.setUser(user);
+        entityManager.persist(db);
 
         entityManager.flush();
 
@@ -185,6 +201,19 @@ public class DataInitializer implements ApplicationRunner {
         g6.setCategory("Puzzle");
         g6.setActive(true);
         gameRepository.save(g6);
+
+        // ── Quiz Topics (from quiz_dataset.json) ──────────────────────────────
+        if (quizTopicRepository.count() == 0) {
+            try {
+                InputStream is = new ClassPathResource("quiz_dataset.json").getInputStream();
+                List<QuizTopic> topics = new ObjectMapper()
+                        .readValue(is, new TypeReference<List<QuizTopic>>() {});
+                quizTopicRepository.saveAll(topics);
+                System.out.println("  Quiz topics: " + topics.size() + " topics loaded from quiz_dataset.json");
+            } catch (Exception e) {
+                System.err.println("  Failed to load quiz_dataset.json: " + e.getMessage());
+            }
+        }
 
         System.out.println("=================================================");
         System.out.println("  Dev data initialized:");

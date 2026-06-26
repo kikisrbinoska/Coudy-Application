@@ -25,11 +25,14 @@ import java.util.stream.Collectors;
 @Service
 public class QuizGeneratorService {
 
-    private static final String CLAUDE_URL = "https://api.anthropic.com/v1/messages";
-    private static final String MODEL = "claude-sonnet-4-20250514";
+    @Value("${azure.ai.endpoint}")
+    private String endpoint;
 
-    @Value("${anthropic.api.key}")
+    @Value("${azure.ai.api-key}")
     private String apiKey;
+
+    @Value("${azure.ai.model}")
+    private String model;
 
     @Autowired
     private RestTemplate restTemplate;
@@ -37,7 +40,8 @@ public class QuizGeneratorService {
     @Autowired
     private QuizTopicRepository repository;
 
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final ObjectMapper mapper = new ObjectMapper()
+            .configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     public List<QuizQuestion> generateQuestionsForTopic(Long topicId, int count) { // ← Long
         QuizTopic topic = repository.findById(topicId).orElseThrow();
@@ -48,6 +52,11 @@ public class QuizGeneratorService {
         String combinedContent = slides.stream()
                 .map(s -> s.getTitle() + ": " + s.getContent())
                 .collect(Collectors.joining("\n\n"));
+
+        // keep under ~4000 chars to stay well within the 8000 token limit
+        if (combinedContent.length() > 4000) {
+            combinedContent = combinedContent.substring(0, 4000);
+        }
 
         String prompt = buildPrompt(topic.getTopic(), combinedContent, count);
         List<QuizQuestion> questions = callClaudeAPI(prompt);
@@ -105,23 +114,24 @@ public class QuizGeneratorService {
 
     private List<QuizQuestion> callClaudeAPI(String prompt) {
         HttpHeaders headers = new HttpHeaders();
-        headers.set("x-api-key", apiKey);
-        headers.set("anthropic-version", "2023-06-01");
+        headers.set("Authorization", "Bearer " + apiKey);
         headers.setContentType(MediaType.APPLICATION_JSON);
 
         Map<String, Object> body = Map.of(
-                "model", MODEL,
-                "max_tokens", 2000,
+                "model", model,
+                "max_tokens", 4000,
                 "messages", List.of(Map.of("role", "user", "content", prompt))
         );
 
-        ResponseEntity<Map> response = restTemplate.exchange(
-                CLAUDE_URL, HttpMethod.POST,
-                new HttpEntity<>(body, headers), Map.class
+        ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                endpoint + "chat/completions", HttpMethod.POST,
+                new HttpEntity<>(body, headers),
+                (Class<Map<String, Object>>) (Class<?>) Map.class
         );
 
-        List<Map> content = (List<Map>) response.getBody().get("content");
-        String json = (String) content.get(0).get("text");
+        List<Map<String, Object>> choices = (List<Map<String, Object>>) response.getBody().get("choices");
+        Map<String, Object> message = (Map<String, Object>) choices.get(0).get("message");
+        String json = (String) message.get("content");
         json = json.replaceAll("```json|```", "").trim();
 
         try {
@@ -130,7 +140,10 @@ public class QuizGeneratorService {
             questions.forEach(q -> q.setId(UUID.randomUUID().toString()));
             return questions;
         } catch (Exception e) {
-            throw new RuntimeException("Failed to parse Claude response", e);
+            System.err.println("=== Failed to parse AI response ===");
+            System.err.println(json);
+            System.err.println("===================================");
+            throw new RuntimeException("Failed to parse Azure AI response: " + e.getMessage(), e);
         }
     }
 }
