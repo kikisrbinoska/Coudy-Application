@@ -25,13 +25,13 @@ import java.util.stream.Collectors;
 @Service
 public class QuizGeneratorService {
 
-    @Value("${azure.ai.endpoint}")
+    @Value("${azure.ai.endpoint:}")
     private String endpoint;
 
-    @Value("${azure.ai.api-key}")
+    @Value("${azure.ai.api-key:}")
     private String apiKey;
 
-    @Value("${azure.ai.model}")
+    @Value("${azure.ai.model:}")
     private String model;
 
     @Autowired
@@ -113,6 +113,12 @@ public class QuizGeneratorService {
     }
 
     private List<QuizQuestion> callClaudeAPI(String prompt) {
+        if (endpoint.isBlank() || apiKey.isBlank() || model.isBlank()) {
+            throw new IllegalStateException(
+                    "Azure AI configuration is missing. Set AZURE_AI_ENDPOINT, AZURE_AI_API_KEY, and AZURE_AI_MODEL."
+            );
+        }
+
         HttpHeaders headers = new HttpHeaders();
         headers.set("Authorization", "Bearer " + apiKey);
         headers.setContentType(MediaType.APPLICATION_JSON);

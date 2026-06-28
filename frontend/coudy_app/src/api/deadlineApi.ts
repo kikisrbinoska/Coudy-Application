@@ -49,6 +49,9 @@ const deadlineApi = {
 
   update: (deadline: Deadline) =>
     axiosInstance.post<Deadline>("/deadline/change", deadline).then((r) => r.data),
+
+  delete: (id: number) =>
+    axiosInstance.delete(`/deadline/${id}`),
 };
 
 export default deadlineApi;

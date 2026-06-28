@@ -49,7 +49,7 @@ public class DataInitializer implements ApplicationRunner {
     @Transactional
     public void run(ApplicationArguments args) {
 
-        // Always reload quiz topics (H2 is in-memory, lost on restart)
+        // Always reload quiz topics in dev so the seeded data stays consistent.
         if (quizTopicRepository.count() == 0) {
             try {
                 InputStream is = new ClassPathResource("quiz_dataset.json").getInputStream();

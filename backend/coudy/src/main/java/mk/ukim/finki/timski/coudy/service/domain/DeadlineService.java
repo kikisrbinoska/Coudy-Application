@@ -10,4 +10,5 @@ public interface DeadlineService {
     Deadline createDeadline(Deadline deadline);
     List<Deadline> findAllDeadlinesByUser(User user);
     Deadline updateDeadline(Deadline deadline);
+    void deleteDeadline(Long id);
 }

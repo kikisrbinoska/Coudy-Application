@@ -19,53 +19,49 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar, Clock, AlertTriangle, TrendingUp, Plus, CalendarDays, Loader2 } from "lucide-react";
+import { Calendar, Clock, AlertTriangle, TrendingUp, Plus, CalendarDays, Loader2, Pencil, Trash2, CheckCircle2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import deadlineApi, { CreateDeadlineRequest, Priority, Deadline, DeadlineStatus } from "@/api/deadlineApi";
 import courseApi, { Course } from "@/api/courseApi";
 
+const EMPTY_FORM: CreateDeadlineRequest = {
+  course: { id: 0 },
+  title: "",
+  description: "",
+  dueDate: "",
+  estimatedHours: 0,
+  priority: "MEDIUM",
+  completionPercentage: 0,
+  status: "NOT_STARTED",
+};
+
 const Deadlines = () => {
   const navigate = useNavigate();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [deletingDeadlineId, setDeletingDeadlineId] = useState<number | null>(null);
   const [courses, setCourses] = useState<Course[]>([]);
   const [loadingCourses, setLoadingCourses] = useState(false);
   const [deadlines, setDeadlines] = useState<Deadline[]>([]);
   const [loadingDeadlines, setLoadingDeadlines] = useState(true);
   const [updatingDeadlineId, setUpdatingDeadlineId] = useState<number | null>(null);
-  const [form, setForm] = useState<CreateDeadlineRequest>({
-    course: { id: 0 },
-    title: "",
-    description: "",
-    dueDate: "",
-    estimatedHours: 0,
-    priority: "MEDIUM",
-    completionPercentage: 0,
-    status: "NOT_STARTED",
-  });
+  const [editingDeadline, setEditingDeadline] = useState<Deadline | null>(null);
+  const [form, setForm] = useState<CreateDeadlineRequest>(EMPTY_FORM);
 
   useEffect(() => {
     loadDeadlines();
   }, []);
 
   useEffect(() => {
-    if (dialogOpen) {
+    if (dialogOpen || editDialogOpen) {
       loadCourses();
     } else {
-      // Reset form when dialog closes
-      setForm({
-        course: { id: 0 },
-        title: "",
-        description: "",
-        dueDate: "",
-        estimatedHours: 0,
-        priority: "MEDIUM",
-        completionPercentage: 0,
-        status: "NOT_STARTED",
-      });
+      setEditingDeadline(null);
+      setForm(EMPTY_FORM);
     }
-  }, [dialogOpen]);
+  }, [dialogOpen, editDialogOpen]);
 
   const loadDeadlines = async () => {
     setLoadingDeadlines(true);
@@ -101,6 +97,67 @@ const Deadlines = () => {
     } finally {
       setLoadingCourses(false);
     }
+  };
+
+  const toDateTimeLocal = (dateString: string) => {
+    const date = new Date(dateString);
+    const pad = (value: number) => String(value).padStart(2, "0");
+    const year = date.getFullYear();
+    const month = pad(date.getMonth() + 1);
+    const day = pad(date.getDate());
+    const hours = pad(date.getHours());
+    const minutes = pad(date.getMinutes());
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
+  const openCreateDialog = () => {
+    setEditingDeadline(null);
+    setForm(EMPTY_FORM);
+    setDialogOpen(true);
+    setEditDialogOpen(false);
+  };
+
+  const openEditDialog = async (deadline: Deadline) => {
+    if (courses.length === 0) {
+      try {
+        await loadCourses();
+      } catch {
+        // ignore
+      }
+    }
+
+    setEditingDeadline(deadline);
+    setForm({
+      course: { id: deadline.course?.id ?? 0 },
+      title: deadline.title ?? "",
+      description: deadline.description ?? "",
+      dueDate: deadline.dueDate ? toDateTimeLocal(deadline.dueDate) : "",
+      estimatedHours: deadline.estimatedHours ?? 0,
+      priority: deadline.priority ?? "MEDIUM",
+      completionPercentage: deadline.completionPercentage ?? 0,
+      status: deadline.status ?? "NOT_STARTED",
+    });
+    setEditDialogOpen(true);
+  };
+
+  const buildDeadlinePayload = (): Deadline => {
+    if (!editingDeadline) {
+      throw new Error("No deadline selected for editing");
+    }
+
+    return {
+      ...editingDeadline,
+      course: {
+        id: form.course.id,
+      },
+      title: form.title,
+      description: form.description,
+      dueDate: new Date(form.dueDate).toISOString(),
+      estimatedHours: form.estimatedHours,
+      priority: form.priority,
+      completionPercentage: form.completionPercentage ?? 0,
+      status: form.status ?? "NOT_STARTED",
+    };
   };
 
   const formatDate = (dateString: string) => {
@@ -146,32 +203,56 @@ const Deadlines = () => {
 
     setCreating(true);
     try {
-      // Convert datetime-local to ISO string
-      const dueDateISO = new Date(form.dueDate).toISOString();
       const deadlineData = {
         ...form,
-        dueDate: dueDateISO,
+        dueDate: new Date(form.dueDate).toISOString(),
       };
       
       await deadlineApi.create(deadlineData);
       setDialogOpen(false);
-      setForm({
-        course: { id: 0 },
-        title: "",
-        description: "",
-        dueDate: "",
-        estimatedHours: 0,
-        priority: "MEDIUM",
-        completionPercentage: 0,
-        status: "NOT_STARTED",
-      });
-      // Refresh deadlines list
+      setForm(EMPTY_FORM);
       await loadDeadlines();
     } catch (error) {
       console.error("Failed to create deadline:", error);
       // TODO: Show error message
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleUpdate = async () => {
+    if (!editingDeadline || !form.title.trim() || !form.course.id || !form.dueDate) {
+      return;
+    }
+
+    setCreating(true);
+    try {
+      const result = await deadlineApi.update(buildDeadlinePayload());
+      setDeadlines((prev) => prev.map((d) => (d.id === result.id ? result : d)));
+      setEditDialogOpen(false);
+      setEditingDeadline(null);
+      setForm(EMPTY_FORM);
+    } catch (error) {
+      console.error("Failed to update deadline:", error);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleDelete = async (deadline: Deadline) => {
+    const confirmed = window.confirm(`Delete deadline "${deadline.title}"?`);
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingDeadlineId(deadline.id);
+    try {
+      await deadlineApi.delete(deadline.id);
+      setDeadlines((prev) => prev.filter((d) => d.id !== deadline.id));
+    } catch (error) {
+      console.error("Failed to delete deadline:", error);
+    } finally {
+      setDeletingDeadlineId(null);
     }
   };
 
@@ -195,6 +276,12 @@ const Deadlines = () => {
     }
   };
 
+  const handleMarkComplete = async (deadline: Deadline) => {
+    await handleStatusChange(deadline, "COMPLETED");
+  };
+
+  const isEditingDeadline = editDialogOpen;
+
   return (
     <div className="min-h-screen p-4 md:p-8">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -216,16 +303,26 @@ const Deadlines = () => {
                 <CalendarDays className="w-5 h-5 mr-2" />
                 View Schedule
               </Button>
-              <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <Dialog
+                open={dialogOpen || editDialogOpen}
+                onOpenChange={(open) => {
+                  setDialogOpen(open);
+                  setEditDialogOpen(open);
+                  if (!open) {
+                    setEditingDeadline(null);
+                    setForm(EMPTY_FORM);
+                  }
+                }}
+              >
                 <DialogTrigger asChild>
-                  <Button className="gradient-primary border-0">
+                  <Button className="gradient-primary border-0" onClick={openCreateDialog}>
                     <Plus className="w-5 h-5 mr-2" />
                     Add Deadline
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
-                    <DialogTitle>Create New Deadline</DialogTitle>
+                    <DialogTitle>{isEditingDeadline ? "Edit Deadline" : "Create New Deadline"}</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4 pt-2">
                     <div className="space-y-1">
@@ -377,7 +474,7 @@ const Deadlines = () => {
                       }
                     >
                       {creating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                      Create Deadline
+                      {isEditingDeadline ? "Save Changes" : "Create Deadline"}
                     </Button>
                   </div>
                 </DialogContent>
@@ -532,12 +629,42 @@ const Deadlines = () => {
                     </div>
 
                     <div className="flex md:flex-col gap-2">
-                      <Button className="gradient-primary border-0">Start Working</Button>
-                      <Button variant="outline" className="glass">
-                        Schedule Time
+                      <Button
+                        variant="outline"
+                        className="glass"
+                        onClick={() => openEditDialog(deadline)}
+                      >
+                        <Pencil className="w-4 h-4 mr-2" />
+                        Edit
                       </Button>
-                      <Button variant="ghost" size="sm">
-                        Mark Complete
+                      <Button
+                        variant="outline"
+                        className="glass text-destructive hover:text-destructive"
+                        onClick={() => handleDelete(deadline)}
+                        disabled={deletingDeadlineId === deadline.id}
+                      >
+                        {deletingDeadlineId === deadline.id ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-4 h-4 mr-2" />
+                        )}
+                        Delete
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleMarkComplete(deadline)}
+                        disabled={
+                          updatingDeadlineId === deadline.id ||
+                          deadline.status === "COMPLETED"
+                        }
+                      >
+                        {updatingDeadlineId === deadline.id ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <CheckCircle2 className="w-4 h-4 mr-2" />
+                        )}
+                        {deadline.status === "COMPLETED" ? "Completed" : "Mark Complete"}
                       </Button>
                     </div>
                   </div>

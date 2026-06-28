@@ -1,4 +1,4 @@
-import axiosInstance from "./axios";
+import axiosInstance, { API_ORIGIN } from "./axios";
 
 export type Difficulty = "EASY" | "MEDIUM" | "HARD" | "EXPERT";
 
@@ -16,8 +16,8 @@ export interface GameDto {
 }
 
 const gameApi = {
-  getAll: () => axiosInstance.get<GameDto[]>("http://localhost:9096/games").then((r) => r.data),
-  getById: (id: number) => axiosInstance.get<GameDto>(`http://localhost:9096/games/${id}`).then((r) => r.data),
+  getAll: () => axiosInstance.get<GameDto[]>(`${API_ORIGIN}/games`).then((r) => r.data),
+  getById: (id: number) => axiosInstance.get<GameDto>(`${API_ORIGIN}/games/${id}`).then((r) => r.data),
 };
 
 export default gameApi;

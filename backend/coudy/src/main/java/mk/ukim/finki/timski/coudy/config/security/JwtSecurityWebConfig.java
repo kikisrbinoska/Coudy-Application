@@ -68,9 +68,6 @@ public class JwtSecurityWebConfig {
                                 "/webjars/**",
                                 "/api-docs/**",
 
-                                // H2 Console (only for development!)
-                                "/h2-console/**",
-
                                 // Public API endpoints
                                 "/api/user/register",
                                 "/api/user/login",
@@ -97,8 +94,6 @@ public class JwtSecurityWebConfig {
                 )
                 .authenticationProvider(authenticationProvider)
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
-
-        http.headers(headers -> headers.frameOptions(frameOptions -> frameOptions.sameOrigin()));
 
         return http.build();
     }

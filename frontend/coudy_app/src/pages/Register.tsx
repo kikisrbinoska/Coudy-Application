@@ -40,10 +40,11 @@ const Register = () => {
       await register({ username, password, repeatPassword, name, surname, role: "ROLE_USER" });
       toast({ title: "Success", description: "Account created! Please sign in." });
       navigate("/login");
-    } catch {
+    } catch (error: any) {
+      const message = error?.response?.data?.message;
       toast({
         title: "Registration failed",
-        description: "Could not create account. Username may already be taken.",
+        description: message ?? "Could not create account. Please try again.",
         variant: "destructive",
       });
     } finally {

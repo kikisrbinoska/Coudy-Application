@@ -42,4 +42,9 @@ public class DeadlineController {
         }
         return deadlineService.updateDeadline(deadline);
     }
+
+    @DeleteMapping("/{id}")
+    public void delete(@PathVariable Long id) {
+        deadlineService.deleteDeadline(id);
+    }
 }

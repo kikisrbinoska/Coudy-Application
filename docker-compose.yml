@@ -1,0 +1,50 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: coudy-postgres
+    environment:
+      POSTGRES_DB: quizdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d quizdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend/coudy
+    container_name: coudy-backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/quizdb
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      AZURE_AI_ENDPOINT: ${AZURE_AI_ENDPOINT:-}
+      AZURE_AI_API_KEY: ${AZURE_AI_API_KEY:-}
+      AZURE_AI_MODEL: ${AZURE_AI_MODEL:-}
+      API_KEY: ${API_KEY:-}
+    ports:
+      - "9096:9096"
+
+  frontend:
+    build:
+      context: ./frontend/coudy_app
+      args:
+        VITE_API_ORIGIN: ${VITE_API_ORIGIN:-http://localhost:9096}
+    container_name: coudy-frontend
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+
+volumes:
+  postgres_data:
