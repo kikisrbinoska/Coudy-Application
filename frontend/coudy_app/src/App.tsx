@@ -21,7 +21,8 @@ import Schedule from "./pages/Schedule";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import NotFound from "./pages/NotFound";
-
+import Games from "./pages/Games";
+import GamePlay from "./pages/GamePlay";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -35,10 +36,13 @@ const App = () => (
             <Navigation />
             <div className="pb-20 md:pb-0 md:pt-20">
               <Routes>
+                <Route path="/games" element={<Games />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
+        
                 <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
                 <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              
                 <Route path="/focus" element={<ProtectedRoute><Focus /></ProtectedRoute>} />
                 <Route path="/courses" element={<ProtectedRoute><Courses /></ProtectedRoute>} />
                 <Route path="/buddies" element={<ProtectedRoute><StudyBuddies /></ProtectedRoute>} />
@@ -48,6 +52,7 @@ const App = () => (
                 <Route path="/certificates" element={<ProtectedRoute><Certificates /></ProtectedRoute>} />
                 <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                 <Route path="/schedule" element={<ProtectedRoute><Schedule /></ProtectedRoute>} />
+                <Route path="/games/:gameId" element={<ProtectedRoute><GamePlay /></ProtectedRoute>} />              {/* 404 route */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </div>

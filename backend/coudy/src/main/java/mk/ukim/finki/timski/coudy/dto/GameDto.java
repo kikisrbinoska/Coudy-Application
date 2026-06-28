@@ -1,4 +1,16 @@
 package mk.ukim.finki.timski.coudy.dto;
 
-public class GameDto {
-}
+import mk.ukim.finki.timski.coudy.model.enumerations.Difficulty;
+
+public record GameDto(
+        Long id,
+        String name,
+        String description,
+        String subject,
+        String icon,
+        Integer points,
+        Integer level,
+        Difficulty difficulty,
+        String category,
+        Boolean active
+) {}

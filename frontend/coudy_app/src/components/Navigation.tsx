@@ -1,4 +1,4 @@
-import { Home, Users, Calendar, Target, Trophy, User, Timer, BookOpen, LogOut } from "lucide-react";
+import { Home, Users, Calendar, Target, Trophy, User, Timer, BookOpen, LogOut, Gamepad2} from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
@@ -15,6 +15,7 @@ const Navigation = () => {
     { to: "/focus", icon: Timer, label: "Focus" },
     { to: "/courses", icon: BookOpen, label: "Courses" },
     { to: "/buddies", icon: Users, label: "Buddies" },
+    { to: "/games", icon: Gamepad2, label: "Games" },
     { to: "/deadlines", icon: Calendar, label: "Deadlines" },
     { to: "/habits", icon: Target, label: "Habits" },
     { to: "/achievements", icon: Trophy, label: "Achievements" },

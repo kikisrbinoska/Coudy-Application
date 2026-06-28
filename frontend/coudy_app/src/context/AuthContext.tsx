@@ -19,14 +19,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const storedToken = localStorage.getItem("token");
-    const storedUser = localStorage.getItem("user");
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
-    }
-    setIsLoading(false);
-  }, []);
+  const storedToken = localStorage.getItem("token");
+  const storedUser = localStorage.getItem("user");
+
+  if (storedToken) {
+    setToken(storedToken);
+  }
+
+  if (storedUser) {
+    setUser(JSON.parse(storedUser));
+  }
+
+  setIsLoading(false);
+}, []);
 
   const login = async (data: LoginUserDto) => {
     const response = await authApi.login(data);
