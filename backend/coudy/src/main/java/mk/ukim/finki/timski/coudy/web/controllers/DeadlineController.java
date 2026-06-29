@@ -1,10 +1,8 @@
 package mk.ukim.finki.timski.coudy.web.controllers;
 
 import mk.ukim.finki.timski.coudy.model.domain.Deadline;
-import mk.ukim.finki.timski.coudy.model.domain.Habit;
 import mk.ukim.finki.timski.coudy.model.domain.User;
 import mk.ukim.finki.timski.coudy.model.enumerations.DeadlineStatus;
-import mk.ukim.finki.timski.coudy.service.domain.CourseService;
 import mk.ukim.finki.timski.coudy.service.domain.DeadlineService;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -34,17 +32,17 @@ public class DeadlineController {
     @PostMapping("/change")
     public Deadline update(@RequestBody Deadline deadline, @AuthenticationPrincipal User user) {
         deadline.setUser(user);
-        if(deadline.getStatus().equals(DeadlineStatus.COMPLETED)){
+        if (deadline.getStatus() == DeadlineStatus.COMPLETED) {
             deadline.setCompletionPercentage(100);
         }
-        if(deadline.getStatus().equals(DeadlineStatus.NOT_STARTED)){
+        if (deadline.getStatus() == DeadlineStatus.NOT_STARTED) {
             deadline.setCompletionPercentage(0);
         }
-        return deadlineService.updateDeadline(deadline);
+        return deadlineService.updateDeadline(deadline, user);
     }
 
     @DeleteMapping("/{id}")
-    public void delete(@PathVariable Long id) {
-        deadlineService.deleteDeadline(id);
+    public void delete(@PathVariable Long id, @AuthenticationPrincipal User user) {
+        deadlineService.deleteDeadline(id, user);
     }
 }

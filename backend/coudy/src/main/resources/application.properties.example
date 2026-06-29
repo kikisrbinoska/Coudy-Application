@@ -8,8 +8,8 @@ spring.jackson.property-naming-strategy=SNAKE_CASE
 
 # ===== DATABASE =====
 spring.datasource.url=jdbc:postgresql://localhost:5432/quizdb
-spring.datasource.username=YOUR_DB_USERNAME
-spring.datasource.password=YOUR_DB_PASSWORD
+spring.datasource.username=postgres
+spring.datasource.password=postgres
 spring.datasource.driver-class-name=org.postgresql.Driver
 
 # ===== JPA =====
