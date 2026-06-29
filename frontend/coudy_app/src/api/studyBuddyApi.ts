@@ -14,6 +14,9 @@ export interface StudyBuddyCard {
   bio?: string;
   status?: "PENDING" | "ACTIVE" | "INACTIVE";
   session_count?: number;
+  unread_count?: number;
+  unread_message_count?: number;
+  unread_session_count?: number;
   matched_at?: string | number[];
   next_session_at?: string | number[];
   next_session_location?: string;
@@ -31,6 +34,20 @@ export interface BuddyConnectionRequest {
   status: "PENDING" | "ACCEPTED" | "DECLINED" | "CANCELLED";
   created_at: string | number[];
   responded_at?: string | number[];
+  read_at?: string | number[];
+}
+
+export interface BuddyNotification {
+  type: "CONNECTION_REQUEST" | "MESSAGE" | "SESSION";
+  request_id?: number;
+  buddy_id?: number;
+  session_id?: number;
+  sender_username?: string;
+  sender_name?: string;
+  sender_surname?: string;
+  title?: string;
+  preview?: string;
+  created_at: string | number[];
 }
 
 export interface BuddySession {
@@ -81,6 +98,15 @@ const studyBuddyApi = {
   outgoingRequests: () =>
     axiosInstance.get<BuddyConnectionRequest[]>("/study-buddies/requests/outgoing").then((r) => r.data),
 
+  notifications: () =>
+    axiosInstance.get<BuddyNotification[]>("/study-buddies/notifications").then((r) => r.data),
+
+  notificationCount: () =>
+    axiosInstance.get<number>("/study-buddies/notifications/count").then((r) => r.data),
+
+  markNotificationsRead: () =>
+    axiosInstance.post<void>("/study-buddies/notifications/read").then((r) => r.data),
+
   connect: (username: string) =>
     axiosInstance.post<BuddyConnectionRequest>(`/study-buddies/connect/${username}`).then((r) => r.data),
 
@@ -89,6 +115,9 @@ const studyBuddyApi = {
 
   declineRequest: (requestId: number) =>
     axiosInstance.post<BuddyConnectionRequest>(`/study-buddies/requests/${requestId}/decline`).then((r) => r.data),
+
+  removeBuddy: (buddyId: number) =>
+    axiosInstance.delete<void>(`/study-buddies/${buddyId}`).then((r) => r.data),
 
   sessions: (buddyId: number) =>
     axiosInstance.get<BuddySession[]>(`/study-buddies/${buddyId}/sessions`).then((r) => r.data),

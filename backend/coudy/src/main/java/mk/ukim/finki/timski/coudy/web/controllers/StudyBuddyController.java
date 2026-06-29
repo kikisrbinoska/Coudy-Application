@@ -2,6 +2,7 @@ package mk.ukim.finki.timski.coudy.web.controllers;
 
 import mk.ukim.finki.timski.coudy.dto.BuddyMessageDto;
 import mk.ukim.finki.timski.coudy.dto.BuddyConnectionRequestDto;
+import mk.ukim.finki.timski.coudy.dto.BuddyNotificationDto;
 import mk.ukim.finki.timski.coudy.dto.BuddySessionDto;
 import mk.ukim.finki.timski.coudy.dto.CreateBuddySessionRequest;
 import mk.ukim.finki.timski.coudy.dto.SendBuddyMessageRequest;
@@ -42,6 +43,21 @@ public class StudyBuddyController {
         return studyBuddyService.outgoingRequests(user);
     }
 
+    @GetMapping("/notifications")
+    public List<BuddyNotificationDto> notifications(@AuthenticationPrincipal User user) {
+        return studyBuddyService.notifications(user);
+    }
+
+    @GetMapping("/notifications/count")
+    public long notificationCount(@AuthenticationPrincipal User user) {
+        return studyBuddyService.unreadNotificationCount(user);
+    }
+
+    @PostMapping("/notifications/read")
+    public void markNotificationsRead(@AuthenticationPrincipal User user) {
+        studyBuddyService.markNotificationsRead(user);
+    }
+
     @PostMapping("/connect/{username}")
     public BuddyConnectionRequestDto connect(@AuthenticationPrincipal User user, @PathVariable String username) {
         return studyBuddyService.connect(user, username);
@@ -55,6 +71,11 @@ public class StudyBuddyController {
     @PostMapping("/requests/{requestId}/decline")
     public BuddyConnectionRequestDto decline(@AuthenticationPrincipal User user, @PathVariable Long requestId) {
         return studyBuddyService.declineRequest(user, requestId);
+    }
+
+    @DeleteMapping("/{buddyId}")
+    public void removeBuddy(@AuthenticationPrincipal User user, @PathVariable Long buddyId) {
+        studyBuddyService.removeBuddy(user, buddyId);
     }
 
     @GetMapping("/{buddyId}/sessions")

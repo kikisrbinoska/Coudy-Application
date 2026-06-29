@@ -16,7 +16,10 @@ public record BuddySessionDto(
         Integer ratingUser1,
         Integer ratingUser2,
         String notes,
-        SessionStatus status
+        SessionStatus status,
+        String createdByUsername,
+        LocalDateTime createdAt,
+        LocalDateTime readAt
 ) {
     public static BuddySessionDto from(BuddySession session) {
         return new BuddySessionDto(
@@ -30,7 +33,10 @@ public record BuddySessionDto(
                 session.getRatingUser1(),
                 session.getRatingUser2(),
                 session.getNotes(),
-                session.getStatus()
+                session.getStatus(),
+                session.getCreatedBy() != null ? session.getCreatedBy().getUsername() : null,
+                session.getCreatedAt(),
+                session.getReadAt()
         );
     }
 }

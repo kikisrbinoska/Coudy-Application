@@ -11,7 +11,8 @@ public record BuddyMessageDto(
         String senderName,
         String senderSurname,
         String content,
-        LocalDateTime sentAt
+        LocalDateTime sentAt,
+        LocalDateTime readAt
 ) {
     public static BuddyMessageDto from(BuddyMessage message) {
         return new BuddyMessageDto(
@@ -21,7 +22,8 @@ public record BuddyMessageDto(
                 message.getSender() != null ? message.getSender().getName() : null,
                 message.getSender() != null ? message.getSender().getSurname() : null,
                 message.getContent(),
-                message.getSentAt()
+                message.getSentAt(),
+                message.getReadAt()
         );
     }
 }

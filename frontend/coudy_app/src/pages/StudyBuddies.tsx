@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import studyBuddyApi, {
@@ -13,7 +13,8 @@ import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { BookOpen, Loader2, MessageCircle, RefreshCw, Search, Send, Star, Users, Video } from "lucide-react";
+import { BookOpen, Loader2, MessageCircle, RefreshCw, Search, Send, Star, Users, Video, Trash2 } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 
 type BuddyThread = {
   buddy: StudyBuddyCard;
@@ -66,6 +67,7 @@ const initials = (name?: string, surname?: string, username?: string) => {
 const StudyBuddies = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<"discover" | "requests" | "mybuddies">("discover");
   const [searchQuery, setSearchQuery] = useState("");
   const [discoverBuddies, setDiscoverBuddies] = useState<StudyBuddyCard[]>([]);
@@ -85,8 +87,12 @@ const StudyBuddies = () => {
   const [messageDraft, setMessageDraft] = useState("");
   const [sendingMessage, setSendingMessage] = useState(false);
   const [joiningBuddyId, setJoiningBuddyId] = useState<number | null>(null);
+  const [removingBuddyId, setRemovingBuddyId] = useState<number | null>(null);
   const [sessionLocation, setSessionLocation] = useState("Online study call");
   const [sessionMinutes, setSessionMinutes] = useState(60);
+  const requestRefs = useRef<Record<number, HTMLDivElement | null>>({});
+  const [pendingFocusRequestId, setPendingFocusRequestId] = useState<number | null>(null);
+  const [pendingFocusBuddyId, setPendingFocusBuddyId] = useState<number | null>(null);
 
   const loadDiscover = useCallback(async () => {
     setLoadingDiscover(true);
@@ -146,7 +152,50 @@ const StudyBuddies = () => {
     refreshAll();
   }, [refreshAll]);
 
-  const openThread = async (buddy: StudyBuddyCard, mode: BuddyThread["mode"]) => {
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (tab === "requests" || tab === "discover" || tab === "mybuddies") {
+      setActiveTab(tab);
+    }
+
+    const requestIdParam = searchParams.get("requestId");
+    if (requestIdParam) {
+      const requestId = Number(requestIdParam);
+      if (Number.isFinite(requestId)) {
+        setPendingFocusRequestId(requestId);
+      }
+    }
+
+    const buddyIdParam = searchParams.get("buddyId");
+    if (buddyIdParam) {
+      const buddyId = Number(buddyIdParam);
+      if (Number.isFinite(buddyId)) {
+        setPendingFocusBuddyId(buddyId);
+      }
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (activeTab !== "requests" || pendingFocusRequestId == null) return;
+
+    const element = requestRefs.current[pendingFocusRequestId];
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "center" });
+      element.classList.add("ring-2", "ring-primary", "ring-offset-2", "ring-offset-background");
+      const timer = window.setTimeout(() => {
+        element.classList.remove("ring-2", "ring-primary", "ring-offset-2", "ring-offset-background");
+      }, 2500);
+
+      setPendingFocusRequestId(null);
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete("requestId");
+      setSearchParams(nextParams, { replace: true });
+
+      return () => window.clearTimeout(timer);
+    }
+  }, [activeTab, pendingFocusRequestId, searchParams, setSearchParams]);
+
+  const openThread = useCallback(async (buddy: StudyBuddyCard, mode: BuddyThread["mode"]) => {
     if (!buddy.id) return;
     setThread({ buddy, mode });
     setThreadOpen(true);
@@ -166,7 +215,20 @@ const StudyBuddies = () => {
     } finally {
       setThreadLoading(false);
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    if (activeTab !== "mybuddies" || pendingFocusBuddyId == null || myBuddies.length === 0) return;
+
+    const buddy = myBuddies.find((item) => item.id === pendingFocusBuddyId);
+    if (!buddy?.id) return;
+
+    openThread(buddy, "messages");
+    setPendingFocusBuddyId(null);
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete("buddyId");
+    setSearchParams(nextParams, { replace: true });
+  }, [activeTab, pendingFocusBuddyId, myBuddies, openThread, searchParams, setSearchParams]);
 
   const connectBuddy = async (username: string, openAfter = false) => {
     setConnectLoadingUsername(username);
@@ -269,6 +331,30 @@ const StudyBuddies = () => {
       toast({ title: "Error", description: "Failed to start a study call.", variant: "destructive" });
     } finally {
       setJoiningBuddyId(null);
+    }
+  };
+
+  const removeBuddy = async (buddy: StudyBuddyCard) => {
+    if (!buddy.id) return;
+    const confirmed = window.confirm(`Remove ${buddy.name ?? buddy.username} from your study buddies?`);
+    if (!confirmed) return;
+
+    setRemovingBuddyId(buddy.id);
+    try {
+      await studyBuddyApi.removeBuddy(buddy.id);
+      toast({
+        title: "Buddy removed",
+        description: `${buddy.name ?? buddy.username} was removed from your active buddies.`,
+      });
+      if (thread?.buddy.id === buddy.id) {
+        setThreadOpen(false);
+      }
+      await refreshAll();
+    } catch (error) {
+      console.error("Failed to remove buddy:", error);
+      toast({ title: "Error", description: "Failed to remove this buddy.", variant: "destructive" });
+    } finally {
+      setRemovingBuddyId(null);
     }
   };
 
@@ -454,15 +540,6 @@ const StudyBuddies = () => {
                           )}
                           Connect
                         </Button>
-                        <Button
-                          variant="outline"
-                          className="glass"
-                          onClick={() => connectBuddy(buddy.username, true)}
-                          disabled={connectLoadingUsername === buddy.username}
-                        >
-                          <MessageCircle className="w-4 h-4 mr-2" />
-                          Request
-                        </Button>
                       </div>
                     </div>
                   </Card>
@@ -496,8 +573,14 @@ const StudyBuddies = () => {
                 ) : incomingRequests.length === 0 ? (
                   <p className="text-sm text-muted-foreground">No incoming connection requests.</p>
                 ) : (
-                  incomingRequests.map((request) => (
-                    <div key={request.id} className="p-4 rounded-2xl glass space-y-3">
+                incomingRequests.map((request) => (
+                  <div
+                    key={request.id}
+                    ref={(node) => {
+                      requestRefs.current[request.id] = node;
+                    }}
+                    className="p-4 rounded-2xl glass space-y-3 transition-shadow"
+                  >
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <p className="font-semibold">
@@ -602,10 +685,17 @@ const StudyBuddies = () => {
                         <div className={`absolute bottom-0 right-0 w-4 h-4 rounded-full ${buddy.status === "ACTIVE" ? "bg-accent" : "bg-muted"} border-2 border-white`} />
                       </div>
                       <div>
-                        <h3 className="text-xl font-bold">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="text-xl font-bold">
                           {buddy.name ?? buddy.username}
                           {buddy.surname ? ` ${buddy.surname}` : ""}
-                        </h3>
+                          </h3>
+                          {((buddy.unread_count ?? 0) > 0) && (
+                            <Badge className="bg-red-500 text-white border-0">
+                              {buddy.unread_count > 99 ? "99+" : buddy.unread_count} new
+                            </Badge>
+                          )}
+                        </div>
                         <p className="text-sm text-muted-foreground">
                           {buddy.courses[0] ?? buddy.major ?? "Study buddy"}
                         </p>
@@ -627,7 +717,7 @@ const StudyBuddies = () => {
                         ) : (
                           <Video className="w-5 h-5 mr-2" />
                         )}
-                        Join Study Call
+                        Start Study Session
                       </Button>
                       <Button
                         variant="outline"
@@ -636,6 +726,19 @@ const StudyBuddies = () => {
                         onClick={() => openThread(buddy, "messages")}
                       >
                         <MessageCircle className="w-5 h-5" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="lg"
+                        className="glass text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => removeBuddy(buddy)}
+                        disabled={removingBuddyId === buddy.id}
+                      >
+                        {removingBuddyId === buddy.id ? (
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-5 h-5" />
+                        )}
                       </Button>
                     </div>
                   </div>
@@ -747,7 +850,7 @@ const StudyBuddies = () => {
                     disabled={!thread?.buddy.id || joiningBuddyId === thread.buddy.id}
                   >
                     {joiningBuddyId === thread?.buddy.id ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Video className="w-4 h-4 mr-2" />}
-                    Join Study Call
+                    Start Study Session
                   </Button>
                 </div>
               </div>

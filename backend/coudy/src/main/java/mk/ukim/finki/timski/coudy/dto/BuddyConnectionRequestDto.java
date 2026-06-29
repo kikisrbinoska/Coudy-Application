@@ -17,7 +17,8 @@ public record BuddyConnectionRequestDto(
         String message,
         BuddyRequestStatus status,
         LocalDateTime createdAt,
-        LocalDateTime respondedAt
+        LocalDateTime respondedAt,
+        LocalDateTime readAt
 ) {
     public static BuddyConnectionRequestDto from(BuddyConnectionRequest request) {
         User sender = request.getSender();
@@ -33,7 +34,8 @@ public record BuddyConnectionRequestDto(
                 request.getMessage(),
                 request.getStatus(),
                 request.getCreatedAt(),
-                request.getRespondedAt()
+                request.getRespondedAt(),
+                request.getReadAt()
         );
     }
 }
