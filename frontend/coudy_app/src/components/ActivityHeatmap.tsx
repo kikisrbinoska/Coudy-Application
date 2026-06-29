@@ -1,5 +1,7 @@
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Activity } from "lucide-react";
+import habitApi, { WeeklySummary } from "@/api/habitApi";
 
 interface DayActivity {
   date: string;
@@ -7,24 +9,31 @@ interface DayActivity {
 }
 
 const ActivityHeatmap = () => {
-  // Generate mock data for the last 12 months
-  const generateMockData = (): DayActivity[] => {
+  const [weeklyData, setWeeklyData] = useState<WeeklySummary[]>([]);
+
+  useEffect(() => {
+    habitApi.getWeeklySummary().then(setWeeklyData).catch(() => {});
+  }, []);
+
+  // Build 365-day grid: real data for this week's days, 0 for others
+  const buildActivityData = (): DayActivity[] => {
     const data: DayActivity[] = [];
     const today = new Date();
-    
-    // Generate data for 365 days (12 months)
+    const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
     for (let i = 364; i >= 0; i--) {
       const date = new Date(today);
       date.setDate(date.getDate() - i);
-      data.push({
-        date: date.toISOString().split('T')[0],
-        count: Math.floor(Math.random() * 8),
-      });
+      const dayName = dayNames[date.getDay()];
+      const match = weeklyData.find((d) => d.day === dayName);
+      // Only mark current week days (i < 7) with real data
+      const count = i < 7 && match ? match.completed : 0;
+      data.push({ date: date.toISOString().split("T")[0], count });
     }
     return data;
   };
 
-  const activityData = generateMockData();
+  const activityData = buildActivityData();
 
   const getIntensityClass = (count: number) => {
     if (count === 0) return "bg-muted/50 dark:bg-muted/30";

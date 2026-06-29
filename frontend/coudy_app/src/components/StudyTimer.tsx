@@ -1,46 +1,56 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Play, Pause, Square, Clock } from "lucide-react";
+import { Play, Pause, Square, Clock, Zap } from "lucide-react";
+import focusApi from "@/api/focusApi";
 
-interface StudySession {
-  date: string;
-  duration: number;
+interface Props {
+  onPointsUpdated?: (newTotal: number) => void;
 }
 
-const StudyTimer = () => {
+const StudyTimer = ({ onPointsUpdated }: Props) => {
   const [time, setTime] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
-  const [sessions, setSessions] = useState<StudySession[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [lastEarned, setLastEarned] = useState<number | null>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    let interval: NodeJS.Timeout;
     if (isRunning) {
-      interval = setInterval(() => {
-        setTime((prevTime) => prevTime + 1);
-      }, 1000);
+      timerRef.current = setInterval(() => setTime((t) => t + 1), 1000);
+    } else {
+      if (timerRef.current) clearInterval(timerRef.current);
     }
-    return () => clearInterval(interval);
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [isRunning]);
 
-  const formatTime = (seconds: number) => {
-    const hrs = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  const formatTime = (s: number) => {
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
   };
 
-  const handleStart = () => setIsRunning(true);
-  const handlePause = () => setIsRunning(false);
-  const handleStop = () => {
-    if (time > 0) {
-      setSessions([...sessions, { date: new Date().toISOString(), duration: time }]);
-    }
+  const handleStop = async () => {
     setIsRunning(false);
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (time === 0) return;
+    const elapsed = time;
     setTime(0);
+    setSaving(true);
+    try {
+      const result = await focusApi.createSession(elapsed);
+      setLastEarned(result.points_earned);
+      onPointsUpdated?.(result.new_total_points);
+      setTimeout(() => setLastEarned(null), 4000);
+    } catch {
+      // ignore
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const totalStudyTime = sessions.reduce((acc, session) => acc + session.duration, 0);
+  const estimatedSP = Math.floor(time / 60) * 10;
 
   return (
     <Card className="glass-card p-6 border-0">
@@ -48,37 +58,42 @@ const StudyTimer = () => {
         <Clock className="w-5 h-5 text-primary" />
         <h3 className="text-xl font-bold">Study Timer</h3>
       </div>
-      
+
       <div className="text-center mb-6">
-        <div className="text-5xl font-bold gradient-primary bg-clip-text text-transparent mb-4">
+        <div className="text-5xl font-mono font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent mb-4">
           {formatTime(time)}
         </div>
+        {time > 0 && (
+          <p className="text-sm text-muted-foreground mb-3">
+            <Zap className="w-4 h-4 inline-block text-primary mr-1" />
+            +{estimatedSP} SP this session
+          </p>
+        )}
         <div className="flex justify-center gap-2">
           {!isRunning ? (
-            <Button onClick={handleStart} className="gradient-primary border-0">
+            <Button onClick={() => setIsRunning(true)} className="gradient-primary border-0" disabled={saving}>
               <Play className="w-4 h-4 mr-2" />
               Start
             </Button>
           ) : (
-            <Button onClick={handlePause} variant="secondary">
+            <Button onClick={() => setIsRunning(false)} variant="secondary">
               <Pause className="w-4 h-4 mr-2" />
               Pause
             </Button>
           )}
-          <Button onClick={handleStop} variant="outline">
+          <Button onClick={handleStop} variant="outline" disabled={time === 0 || saving}>
             <Square className="w-4 h-4 mr-2" />
-            Stop
+            {saving ? "Saving..." : "Stop & Save"}
           </Button>
         </div>
       </div>
 
-      <div className="glass p-4 rounded-2xl">
-        <p className="text-sm text-muted-foreground mb-2">Total Study Time Today</p>
-        <p className="text-2xl font-bold">{formatTime(totalStudyTime)}</p>
-        <p className="text-xs text-muted-foreground mt-1">
-          {sessions.length} session{sessions.length !== 1 ? 's' : ''} completed
-        </p>
-      </div>
+      {lastEarned !== null && (
+        <div className="glass p-4 rounded-2xl text-center">
+          <p className="text-lg font-bold text-primary">+{lastEarned} SP earned!</p>
+          <p className="text-xs text-muted-foreground">Session saved to your profile</p>
+        </div>
+      )}
     </Card>
   );
 };

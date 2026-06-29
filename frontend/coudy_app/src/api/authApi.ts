@@ -33,4 +33,6 @@ export const authApi = {
     axiosInstance.post<LoginResponseDto>("/user/login", data),
 
   logout: () => axiosInstance.get("/user/logout"),
+
+  getMe: () => axiosInstance.get<DisplayUserDto>("/user/me").then((r) => r.data),
 };
