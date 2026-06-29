@@ -231,29 +231,6 @@ public class StudyBuddyServiceImpl implements StudyBuddyService {
             if (existingBuddy.getStatus() == BuddyStatus.ACTIVE) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "You are already connected");
             }
-
-            existingBuddy.setStatus(BuddyStatus.ACTIVE);
-            studyBuddyRepository.save(existingBuddy);
-
-            BuddyConnectionRequest acceptedRequest = buddyConnectionRequestRepository
-                    .findBetween(user.getUsername(), otherUsername, BuddyRequestStatus.ACCEPTED)
-                    .stream()
-                    .findFirst()
-                    .orElse(null);
-
-            if (acceptedRequest != null) {
-                return BuddyConnectionRequestDto.from(acceptedRequest);
-            }
-
-            BuddyConnectionRequest fallbackRequest = new BuddyConnectionRequest();
-            fallbackRequest.setSender(user);
-            fallbackRequest.setReceiver(otherUser);
-            fallbackRequest.setStatus(BuddyRequestStatus.ACCEPTED);
-            fallbackRequest.setCreatedAt(existingBuddy.getMatchedAt() != null ? existingBuddy.getMatchedAt() : LocalDateTime.now());
-            fallbackRequest.setRespondedAt(LocalDateTime.now());
-            fallbackRequest.setReadAt(LocalDateTime.now());
-            fallbackRequest.setMessage("Study buddy connection restored");
-            return BuddyConnectionRequestDto.from(buddyConnectionRequestRepository.save(fallbackRequest));
         }
 
         buddyConnectionRequestRepository.findPendingBetween(user.getUsername(), otherUsername)
@@ -261,15 +238,8 @@ public class StudyBuddyServiceImpl implements StudyBuddyService {
                     if (existingRequest.getSender().getUsername().equals(user.getUsername())) {
                         throw new ResponseStatusException(HttpStatus.CONFLICT, "Connection request already sent");
                     }
+                    throw new ResponseStatusException(HttpStatus.CONFLICT, "You already have a pending request from this user");
                 });
-
-        BuddyConnectionRequest incomingRequest = buddyConnectionRequestRepository.findPendingBetween(otherUsername, user.getUsername())
-                .filter(request -> request.getReceiver().getUsername().equals(user.getUsername()))
-                .orElse(null);
-
-        if (incomingRequest != null) {
-            return acceptRequest(user, incomingRequest.getId());
-        }
 
         BuddyConnectionRequest request = new BuddyConnectionRequest();
         request.setSender(user);
