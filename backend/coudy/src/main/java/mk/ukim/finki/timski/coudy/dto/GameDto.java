@@ -13,4 +13,8 @@ public record GameDto(
         Difficulty difficulty,
         String category,
         Boolean active
+
 ) {}
+
+
+

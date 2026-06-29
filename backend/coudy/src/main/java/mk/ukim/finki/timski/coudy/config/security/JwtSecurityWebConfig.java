@@ -68,26 +68,27 @@ public class JwtSecurityWebConfig {
                                 "/webjars/**",
                                 "/api-docs/**",
 
-                                // H2 Console (only for development!)
-                                "/h2-console/**",
-
                                 // Public API endpoints
                                 "/api/user/register",
                                 "/api/user/login",
-                                "/api/user/logout"
+                                "/api/user/logout",
+
+                                // Quiz endpoints (public for testing)
+                                "/api/quiz/**"
                         ).permitAll()
 
                         // ============================================
                         // USER & ADMIN PATHS
                         // ============================================
+                        .requestMatchers("/api/game-sessions/**").permitAll()
 
-                        .requestMatchers("/api/**", "/habits/**", "/habit-logs/**").permitAll()
-
-                        .requestMatchers("/api/game-sessions/**").hasAnyRole("USER", "ADMIN")
-                        .requestMatchers("/api/quiz/**").permitAll()
-                        .requestMatchers("/api/**", "/habits/**", "/habit-logs/**", "/games/**")
-
+                        .requestMatchers("/api/**", "/habits/**", "/habit-logs/**", "/games/**", "/error")
                         .hasAnyRole("USER", "ADMIN")
+                        .requestMatchers("/api/quiz/**").permitAll()
+
+
+
+
 
                         // ============================================
                         // ADMIN ONLY PATHS
@@ -100,8 +101,6 @@ public class JwtSecurityWebConfig {
                 )
                 .authenticationProvider(authenticationProvider)
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
-
-        http.headers(headers -> headers.frameOptions(frameOptions -> frameOptions.sameOrigin()));
 
         return http.build();
     }

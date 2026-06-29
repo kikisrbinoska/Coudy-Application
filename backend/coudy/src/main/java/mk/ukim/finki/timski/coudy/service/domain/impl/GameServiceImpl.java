@@ -14,14 +14,10 @@ import java.util.List;
 @AllArgsConstructor
 public class GameServiceImpl implements GameService {
     private final GameRepository gameRepository;
+
     @Override
     public List<Game> findAll() {
         return gameRepository.findAll();
-    }
-
-    @Override
-    public Game findById(Long id) {
-        return gameRepository.findById(id).orElseThrow(InvalidGameException::new);
     }
 
     @Override
@@ -33,6 +29,13 @@ public class GameServiceImpl implements GameService {
                         g.getCategory(), g.getActive()))
                 .toList();
     }
+
+    @Override
+    public Game findById(Long id) {
+        return gameRepository.findById(id).orElseThrow(InvalidGameException::new);
+    }
+
+
     @Override
     public Game create(Game game) {
         return gameRepository.save(game);
@@ -40,20 +43,22 @@ public class GameServiceImpl implements GameService {
 
     @Override
     public Game update(Long id, Game game) {
-        Game gameId = gameRepository.findById(id).orElseThrow(InvalidGameException::new);
-        gameId.setId(id);
-        gameId.setName(gameId.getName());
-        gameId.setAchievement(gameId.getAchievement());
-        gameId.setPoints(gameId.getPoints());
-        gameId.setLevel(gameId.getLevel());
-        return gameRepository.save(gameId);
+        Game existing = gameRepository.findById(id).orElseThrow(InvalidGameException::new);
+        existing.setName(game.getName());
+        existing.setDescription(game.getDescription());
+        existing.setSubject(game.getSubject());
+        existing.setIcon(game.getIcon());
+        existing.setPoints(game.getPoints());
+        existing.setLevel(game.getLevel());
+        existing.setDifficulty(game.getDifficulty());
+        existing.setCategory(game.getCategory());
+        existing.setActive(game.getActive());
+        return gameRepository.save(existing);
     }
 
     @Override
     public void delete(Long id) {
-        Game gameId = gameRepository.findById(id).orElseThrow(InvalidGameException::new);
-        gameRepository.delete(gameId);
+        Game game = gameRepository.findById(id).orElseThrow(InvalidGameException::new);
+        gameRepository.delete(game);
     }
-
-
 }

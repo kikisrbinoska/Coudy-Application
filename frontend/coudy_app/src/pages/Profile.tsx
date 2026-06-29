@@ -8,18 +8,49 @@ import StudyTimer from "@/components/StudyTimer";
 import ActivityHeatmap from "@/components/ActivityHeatmap";
 import StudyTimetable from "@/components/StudyTimetable";
 import ProductivityInsights from "@/components/ProductivityInsights";
+import { useAuth } from "@/context/AuthContext";
 
 const Profile = () => {
+  const { user: authUser, token } = useAuth();
+
+  const fullName =
+    authUser?.name && authUser?.surname
+      ? `${authUser.name} ${authUser.surname}`
+      : authUser?.username ?? "";
+
+  const avatarInitials = fullName
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+
+  // Try to extract join date from JWT iat claim
+  let joinDate = "";
+  if (token) {
+    try {
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      if (payload.iat) {
+        joinDate = new Date(payload.iat * 1000).toLocaleDateString("en-US", {
+          month: "long",
+          year: "numeric",
+        });
+      }
+    } catch {
+      // ignore
+    }
+  }
+
   const user = {
-    name: "Emma Chen",
-    email: "emma.chen@university.edu",
-    avatar: "EC",
+    name: fullName,
+    email: authUser?.username ?? "",
+    avatar: avatarInitials,
     level: 12,
     syncPoints: 3450,
     nextLevelPoints: 4000,
     rank: "Junior Achiever",
     streak: 23,
-    joinDate: "January 2024",
+    joinDate,
     badges: [
       { name: "Week Warrior", emoji: "🔥" },
       { name: "Quiz Master", emoji: "🎯" },
@@ -49,10 +80,12 @@ const Profile = () => {
                       <Mail className="w-4 h-4" />
                       {user.email}
                     </span>
-                    <span className="flex items-center gap-1">
-                      <Calendar className="w-4 h-4" />
-                      Joined {user.joinDate}
-                    </span>
+                    {user.joinDate && (
+                      <span className="flex items-center gap-1">
+                        <Calendar className="w-4 h-4" />
+                        Joined {user.joinDate}
+                      </span>
+                    )}
                   </div>
                 </div>
                 <Button variant="outline" className="self-start md:self-auto">

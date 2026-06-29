@@ -47,8 +47,6 @@ public class GameSessionServiceImpl implements GameSessionService {
         return gameSessionRepository.save(session);
     }
 
-
-
     @Override
     public SubmitAnswerResponseDto answer(Long sessionId, String answer) {
 

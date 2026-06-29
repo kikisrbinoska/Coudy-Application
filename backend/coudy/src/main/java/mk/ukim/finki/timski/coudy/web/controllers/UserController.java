@@ -9,12 +9,17 @@ import mk.ukim.finki.timski.coudy.dto.CreateUserDto;
 import mk.ukim.finki.timski.coudy.dto.DisplayUserDto;
 import mk.ukim.finki.timski.coudy.dto.LoginResponseDto;
 import mk.ukim.finki.timski.coudy.dto.LoginUserDto;
+import mk.ukim.finki.timski.coudy.model.domain.User;
 import mk.ukim.finki.timski.coudy.model.exceptions.InvalidArgumentsException;
 import mk.ukim.finki.timski.coudy.model.exceptions.InvalidUserCredentialsException;
 import mk.ukim.finki.timski.coudy.model.exceptions.PasswordsDoNotMatchException;
+import mk.ukim.finki.timski.coudy.model.exceptions.UsernameAlreadyExistsException;
 import mk.ukim.finki.timski.coudy.service.application.UserApplicationService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/user")
@@ -37,13 +42,15 @@ public class UserController {
             )}
     )
     @PostMapping("/register")
-    public ResponseEntity<DisplayUserDto> register(@RequestBody CreateUserDto createUserDto) {
+    public ResponseEntity<?> register(@RequestBody CreateUserDto createUserDto) {
         try {
             return userApplicationService.register(createUserDto)
-                    .map(ResponseEntity::ok)
-                    .orElse(ResponseEntity.notFound().build());
+                    .<ResponseEntity<?>>map(ResponseEntity::ok)
+                    .orElse(ResponseEntity.status(500).body(Map.of("message", "Registration failed.")));
         } catch (InvalidArgumentsException | PasswordsDoNotMatchException exception) {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body(Map.of("message", "Invalid input or passwords do not match."));
+        } catch (UsernameAlreadyExistsException exception) {
+            return ResponseEntity.status(409).body(Map.of("message", "That username is already taken."));
         }
     }
 
@@ -70,5 +77,12 @@ public class UserController {
     @GetMapping("/logout")
     public void logout(HttpServletRequest request) {
         request.getSession().invalidate();
+    }
+
+    @Operation(summary = "Get current user points", description = "Returns the authenticated user's total points")
+    @ApiResponse(responseCode = "200", description = "Points returned")
+    @GetMapping("/points")
+    public ResponseEntity<Integer> getPoints(@AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(user.getPoints() == null ? 0 : user.getPoints());
     }
 }

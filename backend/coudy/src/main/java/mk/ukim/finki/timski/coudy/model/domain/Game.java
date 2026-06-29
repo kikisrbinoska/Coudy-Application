@@ -32,4 +32,8 @@ public class Game {
 
     @ManyToOne
     private Achievement achievement;
+
 }
+
+
+

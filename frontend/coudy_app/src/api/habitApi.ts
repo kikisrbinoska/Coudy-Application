@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const BASE_URL = "http://localhost:9095";
+const BASE_URL = import.meta.env.VITE_API_ORIGIN ?? "http://localhost:9096";
 
 const habitAxios = axios.create({
   baseURL: BASE_URL,

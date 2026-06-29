@@ -82,7 +82,6 @@ public class HabitServiceImpl implements HabitService {
         Habit habit = habitRepository.findById(id).orElseThrow(InvalidArgumentsException::new);
         LocalDate today = LocalDate.now();
 
-        // Dedup: don't allow completing twice on the same day
         List<HabitLog> existing = habitLogRepository.findAllByHabitAndDate(habit, today);
         boolean alreadyCompleted = existing.stream().anyMatch(l -> Boolean.TRUE.equals(l.getCompleted()));
         if (!alreadyCompleted) {
@@ -93,7 +92,6 @@ public class HabitServiceImpl implements HabitService {
             log.setCompleted(true);
             habitLogRepository.save(log);
 
-            // Update streak
             int newStreak = (habit.getStreakCurrent() == null ? 0 : habit.getStreakCurrent()) + 1;
             habit.setStreakCurrent(newStreak);
             if (habit.getStreakLongest() == null || newStreak > habit.getStreakLongest()) {

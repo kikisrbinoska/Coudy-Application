@@ -1,14 +1,20 @@
 package mk.ukim.finki.timski.coudy.config;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 
 import mk.ukim.finki.timski.coudy.model.domain.Course;
 import mk.ukim.finki.timski.coudy.model.domain.Deadline;
+import mk.ukim.finki.timski.coudy.model.domain.Game;
+import mk.ukim.finki.timski.coudy.model.domain.QuizTopic;
 import mk.ukim.finki.timski.coudy.model.domain.User;
 import mk.ukim.finki.timski.coudy.model.enumerations.DeadlineStatus;
+import mk.ukim.finki.timski.coudy.model.enumerations.Difficulty;
 import mk.ukim.finki.timski.coudy.model.enumerations.Priority;
 import mk.ukim.finki.timski.coudy.model.enumerations.Role;
 import mk.ukim.finki.timski.coudy.repository.DeadlineRepository;
+
 
 import mk.ukim.finki.timski.coudy.model.domain.*;
 import mk.ukim.finki.timski.coudy.model.enumerations.*;
@@ -16,10 +22,15 @@ import mk.ukim.finki.timski.coudy.repository.DeadlineRepository;
 import mk.ukim.finki.timski.coudy.repository.GameRepository;
 import mk.ukim.finki.timski.coudy.repository.QuestionRepository;
 
+
+import mk.ukim.finki.timski.coudy.repository.GameRepository;
+import mk.ukim.finki.timski.coudy.repository.QuizTopicRepository;
+
 import mk.ukim.finki.timski.coudy.repository.UserRepository;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
@@ -27,6 +38,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -37,15 +49,31 @@ public class DataInitializer implements ApplicationRunner {
 
     private final UserRepository userRepository;
     private final DeadlineRepository deadlineRepository;
+    private final GameRepository gameRepository;
+    private final QuizTopicRepository quizTopicRepository;
     private final PasswordEncoder passwordEncoder;
     private final QuestionRepository questionRepository;
-    private final GameRepository gameRepository;
     @PersistenceContext
     private EntityManager entityManager;
 
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
+
+        // Always reload quiz topics in dev so the seeded data stays consistent.
+        if (quizTopicRepository.count() == 0) {
+            try {
+                InputStream is = new ClassPathResource("quiz_dataset.json").getInputStream();
+                List<QuizTopic> topics = new ObjectMapper()
+                        .readValue(is, new TypeReference<List<QuizTopic>>() {});
+                quizTopicRepository.saveAll(topics);
+                System.out.println("  Quiz topics: " + topics.size() + " topics loaded from quiz_dataset.json");
+            } catch (Exception e) {
+                System.err.println("  Failed to load quiz_dataset.json: " + e.getMessage());
+            }
+        }
+
+        if (userRepository.findByUsername("kikis").isPresent()) return;
 
         // ── Users ─────────────────────────────────────────────────────────────
         User user = new User("kikis", passwordEncoder.encode("password123"), "Kiki", "Test", Role.ROLE_USER);
@@ -57,34 +85,22 @@ public class DataInitializer implements ApplicationRunner {
         userRepository.save(admin);
 
         // ── Courses ───────────────────────────────────────────────────────────
-        Course math = new Course();
-        math.setCode("MATH101");
-        math.setName("Mathematics");
-        math.setUser(user);
-        entityManager.persist(math);
-
-        Course os = new Course();
-        os.setCode("CS202");
-        os.setName("Operating Systems");
-        os.setUser(user);
-        entityManager.persist(os);
-
-        Course web = new Course();
-        web.setCode("CS301");
-        web.setName("Web Development");
-        web.setUser(user);
-        entityManager.persist(web);
+        Course intSys = new Course(); intSys.setCode("IS101"); intSys.setName("Integrated Systems"); intSys.setUser(user); entityManager.persist(intSys);
+        Course soa = new Course(); soa.setCode("SOA201"); soa.setName("Service Oriented Architecture"); soa.setUser(user); entityManager.persist(soa);
+        Course st = new Course(); st.setCode("ST301"); st.setName("Software Testing"); st.setUser(user); entityManager.persist(st);
+        Course cd = new Course(); cd.setCode("CD401"); cd.setName("CI/CD"); cd.setUser(user); entityManager.persist(cd);
+        Course ap = new Course(); ap.setCode("AP501"); ap.setName("Advanced Programming"); ap.setUser(user); entityManager.persist(ap);
 
         entityManager.flush();
 
-        // ── Deadlines (this week so schedule generation works) ────────────────
+        // ── Deadlines ────────────────────────────────────────────────────────
         LocalDateTime now = LocalDateTime.now();
 
         Deadline d1 = new Deadline();
         d1.setUser(user);
-        d1.setCourse(math);
-        d1.setTitle("Calculus Assignment");
-        d1.setDescription("Chapter 5 exercises");
+        d1.setCourse(soa);
+        d1.setTitle("SOA Assignment");
+        d1.setDescription("Strategic DDD homework");
         d1.setDueDate(now.plusDays(3));
         d1.setEstimatedHours(4);
         d1.setPriority(Priority.HIGH);
@@ -95,9 +111,9 @@ public class DataInitializer implements ApplicationRunner {
 
         Deadline d2 = new Deadline();
         d2.setUser(user);
-        d2.setCourse(os);
-        d2.setTitle("Process Scheduling Lab");
-        d2.setDescription("Implement Round Robin scheduler");
+        d2.setCourse(st);
+        d2.setTitle("Testing Lab");
+        d2.setDescription("Graph coverage exercises");
         d2.setDueDate(now.plusDays(5));
         d2.setEstimatedHours(6);
         d2.setPriority(Priority.CRITICAL);
@@ -108,9 +124,9 @@ public class DataInitializer implements ApplicationRunner {
 
         Deadline d3 = new Deadline();
         d3.setUser(user);
-        d3.setCourse(web);
-        d3.setTitle("REST API Project");
-        d3.setDescription("Build a Spring Boot REST API");
+        d3.setCourse(ap);
+        d3.setTitle("Java Streams Project");
+        d3.setDescription("Implement functional pipelines");
         d3.setDueDate(now.plusDays(6));
         d3.setEstimatedHours(8);
         d3.setPriority(Priority.MEDIUM);
@@ -118,6 +134,9 @@ public class DataInitializer implements ApplicationRunner {
         d3.setStatus(DeadlineStatus.IN_PROGRESS);
         d3.setCreatedAt(now);
         deadlineRepository.save(d3);
+
+
+
 
 
         // ── Educational Games ─────────────────────────────────────────────────
@@ -194,6 +213,7 @@ public class DataInitializer implements ApplicationRunner {
         gameRepository.save(g6);
 
 
+
         //QUESTIONS
         Question q1 = new Question();
         q1.setGame(g1);
@@ -220,12 +240,14 @@ public class DataInitializer implements ApplicationRunner {
         questionRepository.save(q3);
 
 
+
         System.out.println("=================================================");
         System.out.println("  Dev data initialized:");
         System.out.println("  Users  : kikis / password123  (ROLE_USER)");
         System.out.println("           admin / admin123     (ROLE_ADMIN)");
         System.out.println("  Courses: MATH101, CS202, CS301");
         System.out.println("  Deadlines: 3 active deadlines for kikis");
+        System.out.println("  Games: 6 educational games seeded");
         System.out.println("=================================================");
     }
 }

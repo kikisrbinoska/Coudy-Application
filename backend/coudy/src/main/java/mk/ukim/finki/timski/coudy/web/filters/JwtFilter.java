@@ -44,7 +44,7 @@ public class JwtFilter extends OncePerRequestFilter {
     }
 
     private boolean isProtectedApiPath(String path) {
-        return path.startsWith("/api/") || path.startsWith("/habits") || path.startsWith("/habit-logs");
+        return path.startsWith("/api/") || path.startsWith("/habits") || path.startsWith("/habit-logs") || path.startsWith("/games");
     }
 
     private void sendUnauthorized(@NonNull HttpServletResponse response, String message) throws IOException {
