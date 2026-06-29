@@ -10,6 +10,11 @@ import { useState, useEffect, useRef } from "react";
 import habitApi, { HabitDto } from "@/api/habitApi";
 import deadlineApi, { Deadline } from "@/api/deadlineApi";
 import gameApi, { GameDto } from "@/api/gameApi";
+import focusApi from "@/api/focusApi";
+
+const SP_PER_LEVEL = 500;
+
+const calcLevel = (sp: number) => Math.max(1, Math.floor(sp / SP_PER_LEVEL) + 1);
 
 const Dashboard = () => {
   const { user: authUser } = useAuth();
@@ -17,6 +22,7 @@ const Dashboard = () => {
   const [upcomingDeadlines, setUpcomingDeadlines] = useState<Deadline[]>([]);
   const [games, setGames] = useState<GameDto[]>([]);
   const [selectedGame, setSelectedGame] = useState<GameDto | null>(null);
+  const [syncPoints, setSyncPoints] = useState<number>(0);
   const carouselRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -25,6 +31,7 @@ const Dashboard = () => {
       .then((data) => setUpcomingDeadlines(data.filter((d) => d.status !== "COMPLETED")))
       .catch(() => {});
     gameApi.getAll().then(setGames).catch(() => {});
+    focusApi.getPoints().then(setSyncPoints).catch(() => {});
   }, []);
 
   const scrollCarousel = (direction: "left" | "right") => {
@@ -48,11 +55,14 @@ const Dashboard = () => {
       ? `${authUser.name} ${authUser.surname}`
       : authUser?.username ?? "";
 
+  const level = calcLevel(syncPoints);
+  const nextLevelPoints = level * SP_PER_LEVEL;
+
   const mockUser = {
     name: displayName,
-    level: 12,
-    syncPoints: 3450,
-    nextLevelPoints: 4000,
+    level,
+    syncPoints,
+    nextLevelPoints,
     rank: "Junior Achiever",
     avatar: "🎓",
     streak: 23,
