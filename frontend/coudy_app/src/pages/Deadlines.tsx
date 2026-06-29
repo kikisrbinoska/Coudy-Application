@@ -1,29 +1,19 @@
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Calendar, CalendarDays, CheckCircle2, Clock, Loader2, Pencil, Plus, Trash2, TrendingUp, AlertTriangle } from "lucide-react";
+
+import deadlineApi, { CreateDeadlineRequest, Deadline, DeadlineStatus, Priority } from "@/api/deadlineApi";
+import courseApi, { Course } from "@/api/courseApi";
+import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Calendar, Clock, AlertTriangle, TrendingUp, Plus, CalendarDays, Loader2, Pencil, Trash2, CheckCircle2 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
-import deadlineApi, { CreateDeadlineRequest, Priority, Deadline, DeadlineStatus } from "@/api/deadlineApi";
-import courseApi, { Course } from "@/api/courseApi";
 
 const EMPTY_FORM: CreateDeadlineRequest = {
   course: { id: 0 },
@@ -36,17 +26,27 @@ const EMPTY_FORM: CreateDeadlineRequest = {
   status: "NOT_STARTED",
 };
 
+type ApiError = {
+  response?: {
+    status?: number;
+    data?: {
+      message?: string;
+    };
+  };
+};
+
 const parseDueDate = (val: string | number[] | undefined): Date => {
   if (!val) return new Date(NaN);
   if (Array.isArray(val)) {
-    const [year, month, day, hour = 0, min = 0] = val as number[];
+    const [year, month, day, hour = 0, min = 0] = val;
     return new Date(year, month - 1, day, hour, min);
   }
-  return new Date(val as string);
+  return new Date(val);
 };
 
 const Deadlines = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -77,8 +77,12 @@ const Deadlines = () => {
     try {
       const data = await deadlineApi.getAll();
       setDeadlines(data);
-    } catch (error: any) {
-      if (error.response?.status === 401 || error.response?.status === 403) throw error;
+    } catch (error: unknown) {
+      console.error("Failed to load deadlines:", error);
+      const apiError = error as ApiError;
+      if (apiError.response?.status === 401 || apiError.response?.status === 403) {
+        throw error;
+      }
       setDeadlines([]);
     } finally {
       setLoadingDeadlines(false);
@@ -88,9 +92,14 @@ const Deadlines = () => {
   const loadCourses = async () => {
     setLoadingCourses(true);
     try {
-      setCourses(await courseApi.getAll());
-    } catch (error: any) {
-      if (error.response?.status === 401 || error.response?.status === 403) throw error;
+      const data = await courseApi.getAll();
+      setCourses(data);
+    } catch (error: unknown) {
+      console.error("Failed to load courses:", error);
+      const apiError = error as ApiError;
+      if (apiError.response?.status === 401 || apiError.response?.status === 403) {
+        throw error;
+      }
       setCourses([]);
     } finally {
       setLoadingCourses(false);
@@ -99,7 +108,7 @@ const Deadlines = () => {
 
   const toDateTimeLocal = (val: string | number[] | undefined) => {
     const date = parseDueDate(val);
-    if (isNaN(date.getTime())) return "";
+    if (Number.isNaN(date.getTime())) return "";
     const pad = (n: number) => String(n).padStart(2, "0");
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
   };
@@ -113,8 +122,13 @@ const Deadlines = () => {
 
   const openEditDialog = async (deadline: Deadline) => {
     if (courses.length === 0) {
-      try { await loadCourses(); } catch { /* ignore */ }
+      try {
+        await loadCourses();
+      } catch {
+        // Ignore auth errors here; the interceptor handles them.
+      }
     }
+
     setEditingDeadline(deadline);
     setForm({
       course: { id: deadline.course?.id ?? 0 },
@@ -130,10 +144,15 @@ const Deadlines = () => {
   };
 
   const buildDeadlinePayload = (): Deadline => {
-    if (!editingDeadline) throw new Error("No deadline selected for editing");
+    if (!editingDeadline) {
+      throw new Error("No deadline selected for editing");
+    }
+
     return {
       ...editingDeadline,
-      course: { id: form.course.id },
+      course: {
+        id: form.course.id,
+      },
       title: form.title,
       description: form.description,
       due_date: new Date(form.due_date).toISOString(),
@@ -146,37 +165,63 @@ const Deadlines = () => {
 
   const formatDate = (val: string | number[] | undefined) => {
     const date = parseDueDate(val);
-    if (isNaN(date.getTime())) return { relative: "No date", absolute: "—" };
+    if (Number.isNaN(date.getTime())) return { relative: "No date", absolute: "—" };
+
     const now = new Date();
     const diffDays = Math.ceil((date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    let relative: string;
-    if (diffDays < 0) relative = "Overdue";
-    else if (diffDays === 0) relative = "Today";
-    else if (diffDays === 1) relative = "1 day";
-    else if (diffDays < 7) relative = `${diffDays} days`;
-    else { const w = Math.floor(diffDays / 7); relative = `${w} week${w > 1 ? "s" : ""}`; }
-    return { relative, absolute: date.toLocaleString() };
+
+    if (diffDays < 0) return { relative: "Overdue", absolute: date.toLocaleString() };
+    if (diffDays === 0) return { relative: "Today", absolute: date.toLocaleString() };
+    if (diffDays === 1) return { relative: "1 day", absolute: date.toLocaleString() };
+    if (diffDays < 7) return { relative: `${diffDays} days`, absolute: date.toLocaleString() };
+
+    const weeks = Math.floor(diffDays / 7);
+    return { relative: `${weeks} week${weeks > 1 ? "s" : ""}`, absolute: date.toLocaleString() };
   };
 
   const priorityColor = (priority: string) => {
     switch (priority.toLowerCase()) {
-      case "critical": return "bg-destructive text-destructive-foreground";
-      case "high": return "bg-secondary text-secondary-foreground";
-      case "medium": return "bg-accent text-accent-foreground";
-      default: return "bg-muted text-muted-foreground";
+      case "critical":
+        return "bg-destructive text-destructive-foreground";
+      case "high":
+        return "bg-secondary text-secondary-foreground";
+      case "medium":
+        return "bg-accent text-accent-foreground";
+      default:
+        return "bg-muted text-muted-foreground";
     }
+  };
+
+  const getDeadlineErrorMessage = (error: unknown, fallback: string) => {
+    const status = (error as ApiError)?.response?.status;
+    if (status === 403) return "You can only modify your own deadlines.";
+    if (status === 404) return "That deadline could not be found.";
+    return (error as ApiError)?.response?.data?.message || fallback;
   };
 
   const handleCreate = async () => {
     if (!form.title.trim() || !form.course.id || !form.due_date) return;
+
     setCreating(true);
     try {
-      await deadlineApi.create({ ...form, due_date: new Date(form.due_date).toISOString() });
+      await deadlineApi.create({
+        ...form,
+        due_date: new Date(form.due_date).toISOString(),
+      });
       setDialogOpen(false);
       setForm(EMPTY_FORM);
       await loadDeadlines();
-    } catch (error) {
+      toast({
+        title: "Deadline created",
+        description: "Your new deadline is now saved.",
+      });
+    } catch (error: unknown) {
       console.error("Failed to create deadline:", error);
+      toast({
+        title: "Error",
+        description: getDeadlineErrorMessage(error, "Failed to create deadline."),
+        variant: "destructive",
+      });
     } finally {
       setCreating(false);
     }
@@ -184,6 +229,7 @@ const Deadlines = () => {
 
   const handleUpdate = async () => {
     if (!editingDeadline || !form.title.trim() || !form.course.id || !form.due_date) return;
+
     setCreating(true);
     try {
       const result = await deadlineApi.update(buildDeadlinePayload());
@@ -191,8 +237,17 @@ const Deadlines = () => {
       setEditDialogOpen(false);
       setEditingDeadline(null);
       setForm(EMPTY_FORM);
-    } catch (error) {
+      toast({
+        title: "Deadline updated",
+        description: "Your changes were saved.",
+      });
+    } catch (error: unknown) {
       console.error("Failed to update deadline:", error);
+      toast({
+        title: "Error",
+        description: getDeadlineErrorMessage(error, "Failed to update deadline."),
+        variant: "destructive",
+      });
     } finally {
       setCreating(false);
     }
@@ -200,12 +255,22 @@ const Deadlines = () => {
 
   const handleDelete = async (deadline: Deadline) => {
     if (!window.confirm(`Delete deadline "${deadline.title}"?`)) return;
+
     setDeletingDeadlineId(deadline.id);
     try {
       await deadlineApi.delete(deadline.id);
       setDeadlines((prev) => prev.filter((d) => d.id !== deadline.id));
-    } catch (error) {
+      toast({
+        title: "Deadline deleted",
+        description: `"${deadline.title}" was removed.`,
+      });
+    } catch (error: unknown) {
       console.error("Failed to delete deadline:", error);
+      toast({
+        title: "Error",
+        description: getDeadlineErrorMessage(error, "Failed to delete deadline."),
+        variant: "destructive",
+      });
     } finally {
       setDeletingDeadlineId(null);
     }
@@ -216,21 +281,28 @@ const Deadlines = () => {
     try {
       const result = await deadlineApi.update({ ...deadline, status: newStatus });
       setDeadlines((prev) => prev.map((d) => (d.id === deadline.id ? result : d)));
-    } catch (error) {
+      toast({
+        title: "Deadline updated",
+        description: `Status changed to ${newStatus.replace("_", " ").toLowerCase()}.`,
+      });
+    } catch (error: unknown) {
       console.error("Failed to update deadline status:", error);
+      toast({
+        title: "Error",
+        description: getDeadlineErrorMessage(error, "Failed to update deadline status."),
+        variant: "destructive",
+      });
     } finally {
       setUpdatingDeadlineId(null);
     }
   };
 
   const handleMarkComplete = (deadline: Deadline) => handleStatusChange(deadline, "COMPLETED");
-
   const isEditingDeadline = editDialogOpen;
 
   return (
     <div className="min-h-screen p-4 md:p-8">
       <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
         <div className="glass-card rounded-3xl p-6 md:p-8">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
@@ -249,7 +321,10 @@ const Deadlines = () => {
                 onOpenChange={(open) => {
                   setDialogOpen(open);
                   setEditDialogOpen(open);
-                  if (!open) { setEditingDeadline(null); setForm(EMPTY_FORM); }
+                  if (!open) {
+                    setEditingDeadline(null);
+                    setForm(EMPTY_FORM);
+                  }
                 }}
               >
                 <DialogTrigger asChild>
@@ -267,14 +342,22 @@ const Deadlines = () => {
                       <Label>Course *</Label>
                       {loadingCourses ? (
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Loader2 className="w-4 h-4 animate-spin" />Loading courses...
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Loading courses...
                         </div>
                       ) : (
                         <Select
                           value={form.course.id ? form.course.id.toString() : ""}
-                          onValueChange={(v) => setForm((f) => ({ ...f, course: { id: parseInt(v) } }))}
+                          onValueChange={(v) =>
+                            setForm((f) => ({
+                              ...f,
+                              course: { id: parseInt(v, 10) },
+                            }))
+                          }
                         >
-                          <SelectTrigger><SelectValue placeholder="Select a course" /></SelectTrigger>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a course" />
+                          </SelectTrigger>
                           <SelectContent>
                             {courses.length === 0 ? (
                               <div className="px-2 py-1.5 text-sm text-muted-foreground">No courses available</div>
@@ -322,7 +405,12 @@ const Deadlines = () => {
                           min="0"
                           placeholder="e.g. 8"
                           value={form.estimated_hours || ""}
-                          onChange={(e) => setForm((f) => ({ ...f, estimated_hours: parseInt(e.target.value) || 0 }))}
+                          onChange={(e) =>
+                            setForm((f) => ({
+                              ...f,
+                              estimated_hours: parseInt(e.target.value, 10) || 0,
+                            }))
+                          }
                         />
                       </div>
                     </div>
@@ -332,7 +420,9 @@ const Deadlines = () => {
                         value={form.priority}
                         onValueChange={(v) => setForm((f) => ({ ...f, priority: v as Priority }))}
                       >
-                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="LOW">Low</SelectItem>
                           <SelectItem value="MEDIUM">Medium</SelectItem>
@@ -350,16 +440,28 @@ const Deadlines = () => {
                           max="100"
                           placeholder="0"
                           value={form.completion_percentage || ""}
-                          onChange={(e) => setForm((f) => ({ ...f, completion_percentage: parseInt(e.target.value) || 0 }))}
+                          onChange={(e) =>
+                            setForm((f) => ({
+                              ...f,
+                              completion_percentage: parseInt(e.target.value, 10) || 0,
+                            }))
+                          }
                         />
                       </div>
                       <div className="space-y-1">
                         <Label>Status</Label>
                         <Select
                           value={form.status}
-                          onValueChange={(v) => setForm((f) => ({ ...f, status: v as CreateDeadlineRequest["status"] }))}
+                          onValueChange={(v) =>
+                            setForm((f) => ({
+                              ...f,
+                              status: v as CreateDeadlineRequest["status"],
+                            }))
+                          }
                         >
-                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="NOT_STARTED">Not Started</SelectItem>
                             <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
@@ -373,7 +475,14 @@ const Deadlines = () => {
                     <Button
                       className="w-full gradient-primary border-0"
                       onClick={isEditingDeadline ? handleUpdate : handleCreate}
-                      disabled={creating || !form.title.trim() || !form.course.id || !form.due_date || form.estimated_hours <= 0 || loadingCourses}
+                      disabled={
+                        creating ||
+                        !form.title.trim() ||
+                        !form.course.id ||
+                        !form.due_date ||
+                        form.estimated_hours <= 0 ||
+                        loadingCourses
+                      }
                     >
                       {creating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                       {isEditingDeadline ? "Save Changes" : "Create Deadline"}
@@ -385,7 +494,6 @@ const Deadlines = () => {
           </div>
         </div>
 
-        {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card className="glass-card p-6 border-0">
             <div className="flex items-center justify-between">
@@ -393,9 +501,10 @@ const Deadlines = () => {
                 <p className="text-sm text-muted-foreground">Due This Week</p>
                 <p className="text-3xl font-bold mt-1">
                   {deadlines.filter((d) => {
-                    const due = parseDueDate(d.due_date);
+                    const dueDate = parseDueDate(d.due_date);
                     const now = new Date();
-                    return due >= now && due <= new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+                    const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+                    return dueDate >= now && dueDate <= weekFromNow;
                   }).length}
                 </p>
               </div>
@@ -439,7 +548,6 @@ const Deadlines = () => {
           </Card>
         </div>
 
-        {/* Deadlines List */}
         <div className="space-y-4">
           <h2 className="text-2xl font-bold">All Deadlines</h2>
           {loadingDeadlines ? (
@@ -458,6 +566,7 @@ const Deadlines = () => {
                 ? `${deadline.course.code}${deadline.course.name ? ` - ${deadline.course.name}` : ""}`
                 : deadline.course?.name || `Course ${deadline.course?.id || ""}`;
               const pct = deadline.completion_percentage || 0;
+
               return (
                 <Card key={deadline.id} className="glass-card p-6 border-0 hover:shadow-xl transition-shadow">
                   <div className="flex flex-col md:flex-row gap-6">
@@ -472,9 +581,11 @@ const Deadlines = () => {
                               disabled={updatingDeadlineId === deadline.id}
                             >
                               <SelectTrigger className="w-40 h-7">
-                                {updatingDeadlineId === deadline.id
-                                  ? <Loader2 className="w-3 h-3 animate-spin" />
-                                  : <SelectValue />}
+                                {updatingDeadlineId === deadline.id ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : (
+                                  <SelectValue />
+                                )}
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="NOT_STARTED">Not Started</SelectItem>
@@ -515,8 +626,8 @@ const Deadlines = () => {
                             <p>
                               <strong>AI Prediction:</strong>{" "}
                               {deadline.priority?.toLowerCase() === "critical"
-                                ? "⚠️ At risk of missing deadline. Schedule 3+ hours this week."
-                                : "📅 On track if you allocate 2 hours by tomorrow."}
+                                ? "At risk of missing deadline. Schedule 3+ hours this week."
+                                : "On track if you allocate 2 hours by tomorrow."}
                             </p>
                           </div>
                         )}
@@ -525,7 +636,8 @@ const Deadlines = () => {
 
                     <div className="flex md:flex-col gap-2">
                       <Button variant="outline" className="glass" onClick={() => openEditDialog(deadline)}>
-                        <Pencil className="w-4 h-4 mr-2" />Edit
+                        <Pencil className="w-4 h-4 mr-2" />
+                        Edit
                       </Button>
                       <Button
                         variant="outline"
@@ -533,9 +645,11 @@ const Deadlines = () => {
                         onClick={() => handleDelete(deadline)}
                         disabled={deletingDeadlineId === deadline.id}
                       >
-                        {deletingDeadlineId === deadline.id
-                          ? <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          : <Trash2 className="w-4 h-4 mr-2" />}
+                        {deletingDeadlineId === deadline.id ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-4 h-4 mr-2" />
+                        )}
                         Delete
                       </Button>
                       <Button
@@ -544,9 +658,11 @@ const Deadlines = () => {
                         onClick={() => handleMarkComplete(deadline)}
                         disabled={updatingDeadlineId === deadline.id || deadline.status === "COMPLETED"}
                       >
-                        {updatingDeadlineId === deadline.id
-                          ? <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          : <CheckCircle2 className="w-4 h-4 mr-2" />}
+                        {updatingDeadlineId === deadline.id ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <CheckCircle2 className="w-4 h-4 mr-2" />
+                        )}
                         {deadline.status === "COMPLETED" ? "Completed" : "Mark Complete"}
                       </Button>
                     </div>

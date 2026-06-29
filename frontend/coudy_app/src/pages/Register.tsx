@@ -37,7 +37,7 @@ const Register = () => {
 
     setIsSubmitting(true);
     try {
-      await register({ username, password, repeatPassword, name, surname, role: "ROLE_USER" });
+      await register({ username, password, repeat_password: repeatPassword, name, surname, role: "ROLE_USER" });
       toast({ title: "Success", description: "Account created! Please sign in." });
       navigate("/login");
     } catch (error: any) {
