@@ -164,7 +164,7 @@ const Dashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Active Habits</p>
-                <p className="text-3xl font-bold mt-1">{todayHabits.filter(h => h.completedToday).length}/{todayHabits.length}</p>
+                <p className="text-3xl font-bold mt-1">{todayHabits.filter(h => h.completed_today).length}/{todayHabits.length}</p>
               </div>
               <Target className="w-12 h-12 text-primary" />
             </div>
@@ -297,14 +297,14 @@ const Dashboard = () => {
                 todayHabits.map((habit) => (
                   <div key={habit.id} className="glass p-4 rounded-2xl flex items-center justify-between hover:scale-102 transition-transform">
                     <div className="flex items-center gap-3">
-                      <div className={`w-6 h-6 rounded-full ${habit.completedToday ? 'bg-accent' : 'bg-muted'} flex items-center justify-center`}>
-                        {habit.completedToday && <span className="text-accent-foreground text-sm">✓</span>}
+                      <div className={`w-6 h-6 rounded-full ${habit.completed_today ? 'bg-accent' : 'bg-muted'} flex items-center justify-center`}>
+                        {habit.completed_today && <span className="text-accent-foreground text-sm">✓</span>}
                       </div>
                       <div>
                         <p className="font-medium">{habit.icon} {habit.name}</p>
-                        {habit.streakCurrent > 0 && (
+                        {(habit.streak_current ?? 0) > 0 && (
                           <p className="text-xs text-muted-foreground flex items-center gap-1">
-                            <Flame className="w-3 h-3" /> {habit.streakCurrent} day streak
+                            <Flame className="w-3 h-3" /> {habit.streak_current} day streak
                           </p>
                         )}
                       </div>

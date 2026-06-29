@@ -8,14 +8,14 @@ export interface HabitDto {
   name: string;
   icon: string;
   category: HabitCategory;
-  targetFrequency: TargetFrequency;
-  reminderTime: string | null;
-  streakCurrent: number;
-  streakLongest: number;
-  totalCompletions: number;
-  createdAt: string;
-  completedToday: boolean;
-  completionRate: number;
+  target_frequency: TargetFrequency;
+  reminder_time: string | null;
+  streak_current: number;
+  streak_longest: number;
+  total_completions: number;
+  created_at: string;
+  completed_today: boolean;
+  completion_rate: number;
 }
 
 export interface CreateHabitRequest {

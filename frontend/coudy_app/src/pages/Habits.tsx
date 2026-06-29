@@ -119,10 +119,10 @@ const Habits = () => {
   };
 
   const maxWeekCompleted = Math.max(...weekData.map((d) => d.completed), 1);
-  const completedToday = habits.filter((h) => h.completedToday).length;
-  const longestStreak = habits.length ? Math.max(...habits.map((h) => h.streakLongest)) : 0;
+  const completedToday = habits.filter((h) => h.completed_today).length;
+  const longestStreak = habits.length ? Math.max(...habits.map((h) => h.streak_longest ?? 0)) : 0;
   const avgCompletion = habits.length
-    ? Math.round(habits.reduce((s, h) => s + h.completionRate, 0) / habits.length)
+    ? Math.round(habits.reduce((s, h) => s + (h.completion_rate ?? 0), 0) / habits.length)
     : 0;
 
   if (loading) {
@@ -298,7 +298,7 @@ const Habits = () => {
                 <Card
                   key={habit.id}
                   className={`glass-card p-6 border-0 hover:shadow-xl transition-all ${
-                    habit.completedToday ? "border-2 border-accent" : ""
+                    habit.completed_today ? "border-2 border-accent" : ""
                   }`}
                 >
                   <div className="flex items-start justify-between mb-4">
@@ -317,14 +317,14 @@ const Habits = () => {
                     <div className="flex gap-2">
                       <Button
                         size="sm"
-                        variant={habit.completedToday ? "default" : "outline"}
-                        className={habit.completedToday ? "gradient-accent border-0" : "glass"}
-                        onClick={() => !habit.completedToday && handleComplete(habit.id)}
-                        disabled={habit.completedToday || completingId === habit.id}
+                        variant={habit.completed_today ? "default" : "outline"}
+                        className={habit.completed_today ? "gradient-accent border-0" : "glass"}
+                        onClick={() => !habit.completed_today && handleComplete(habit.id)}
+                        disabled={habit.completed_today || completingId === habit.id}
                       >
                         {completingId === habit.id ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : habit.completedToday ? (
+                        ) : habit.completed_today ? (
                           "✓ Done"
                         ) : (
                           "Complete"
@@ -350,31 +350,31 @@ const Habits = () => {
                     <div>
                       <div className="flex items-center justify-center gap-1 mb-1">
                         <Flame className="w-4 h-4 text-secondary" />
-                        <p className="text-2xl font-bold">{habit.streakCurrent}</p>
+                        <p className="text-2xl font-bold">{habit.streak_current ?? 0}</p>
                       </div>
                       <p className="text-xs text-muted-foreground">Current Streak</p>
                     </div>
                     <div>
-                      <p className="text-2xl font-bold">{habit.streakLongest}</p>
+                      <p className="text-2xl font-bold">{habit.streak_longest ?? 0}</p>
                       <p className="text-xs text-muted-foreground">Best Streak</p>
                     </div>
                     <div>
-                      <p className="text-2xl font-bold">{habit.completionRate}%</p>
+                      <p className="text-2xl font-bold">{Math.round(habit.completion_rate ?? 0)}%</p>
                       <p className="text-xs text-muted-foreground">Success Rate</p>
                     </div>
                   </div>
 
-                  {habit.streakCurrent === 0 && !habit.completedToday && habit.totalCompletions > 0 && (
+                  {habit.streak_current === 0 && !habit.completed_today && (habit.total_completions ?? 0) > 0 && (
                     <div className="glass p-3 rounded-xl text-sm mt-4">
                       <p>
                         <strong>⚠️ Streak broken!</strong> Complete today to start building again.
                       </p>
                     </div>
                   )}
-                  {habit.streakCurrent >= 7 && (
+                  {(habit.streak_current ?? 0) >= 7 && (
                     <div className="glass p-3 rounded-xl text-sm mt-4">
                       <p>
-                        <strong>🔥 Great momentum!</strong> You're on a {habit.streakCurrent}-day streak!
+                        <strong>🔥 Great momentum!</strong> You're on a {habit.streak_current}-day streak!
                       </p>
                     </div>
                   )}
