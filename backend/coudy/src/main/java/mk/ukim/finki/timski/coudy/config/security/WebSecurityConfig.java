@@ -28,7 +28,6 @@ public class WebSecurityConfig {
     public WebSecurityConfig(CustomUsernamePasswordAuthenticationProvider authenticationProvider) {
         this.authenticationProvider = authenticationProvider;
     }
-    git addgitgit add . add ../../frontend/coudy_app/src/api/gameApi.ts src/main/java/mk/ukim/finki/timski/coudy/web/controllers/GameController.java
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration corsConfiguration = new CorsConfiguration();
