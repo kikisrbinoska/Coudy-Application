@@ -3,7 +3,7 @@ import axiosInstance from "./axios";
 export interface CreateUserDto {
   username: string;
   password: string;
-  repeatPassword: string;
+  repeat_password: string;
   name: string;
   surname: string;
   role: string;
@@ -33,4 +33,6 @@ export const authApi = {
     axiosInstance.post<LoginResponseDto>("/user/login", data),
 
   logout: () => axiosInstance.get("/user/logout"),
+
+  getMe: () => axiosInstance.get<DisplayUserDto>("/user/me").then((r) => r.data),
 };

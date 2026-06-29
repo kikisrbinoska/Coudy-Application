@@ -82,7 +82,7 @@ public class JwtSecurityWebConfig {
                         // ============================================
                         .requestMatchers("/api/game-sessions/**").permitAll()
 
-                        .requestMatchers("/api/**", "/habits/**", "/habit-logs/**", "/games/**", "/error")
+                        .requestMatchers("/api/**", "/error")
                         .hasAnyRole("USER", "ADMIN")
                         .requestMatchers("/api/quiz/**").permitAll()
 

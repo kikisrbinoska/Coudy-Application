@@ -3,15 +3,28 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
-import { User, Mail, Calendar, Trophy, Flame, Target, Settings } from "lucide-react";
+import { Mail, Calendar, Trophy, Flame, Target, Settings } from "lucide-react";
 import StudyTimer from "@/components/StudyTimer";
 import ActivityHeatmap from "@/components/ActivityHeatmap";
 import StudyTimetable from "@/components/StudyTimetable";
 import ProductivityInsights from "@/components/ProductivityInsights";
 import { useAuth } from "@/context/AuthContext";
+import { useEffect, useState } from "react";
+import focusApi from "@/api/focusApi";
+import habitApi, { HabitDto } from "@/api/habitApi";
+
+const SP_PER_LEVEL = 500;
+const calcLevel = (sp: number) => Math.max(1, Math.floor(sp / SP_PER_LEVEL) + 1);
 
 const Profile = () => {
   const { user: authUser, token } = useAuth();
+  const [syncPoints, setSyncPoints] = useState(0);
+  const [habits, setHabits] = useState<HabitDto[]>([]);
+
+  useEffect(() => {
+    focusApi.getPoints().then(setSyncPoints).catch(() => {});
+    habitApi.getAll().then(setHabits).catch(() => {});
+  }, []);
 
   const fullName =
     authUser?.name && authUser?.surname
@@ -20,12 +33,13 @@ const Profile = () => {
 
   const avatarInitials = fullName
     .split(" ")
+    .filter(Boolean)
     .map((w) => w[0])
     .join("")
     .toUpperCase()
     .slice(0, 2);
 
-  // Try to extract join date from JWT iat claim
+  // Extract join date from JWT iat claim
   let joinDate = "";
   if (token) {
     try {
@@ -41,23 +55,18 @@ const Profile = () => {
     }
   }
 
-  const user = {
-    name: fullName,
-    email: authUser?.username ?? "",
-    avatar: avatarInitials,
-    level: 12,
-    syncPoints: 3450,
-    nextLevelPoints: 4000,
-    rank: "Junior Achiever",
-    streak: 23,
-    joinDate,
-    badges: [
-      { name: "Week Warrior", emoji: "🔥" },
-      { name: "Quiz Master", emoji: "🎯" },
-      { name: "Perfect Record", emoji: "🏆" },
-      { name: "Early Bird", emoji: "🌅" },
-    ],
-  };
+  const level = calcLevel(syncPoints);
+  const nextLevelPoints = level * SP_PER_LEVEL;
+  const longestStreak = habits.length
+    ? Math.max(...habits.map((h) => h.streak_current ?? 0))
+    : 0;
+
+  // Dynamically earn badges based on real data
+  const earnedBadges: { name: string; emoji: string }[] = [];
+  if (longestStreak >= 7) earnedBadges.push({ name: "Week Warrior", emoji: "🔥" });
+  if (syncPoints >= 500) earnedBadges.push({ name: "SP Milestone", emoji: "⭐" });
+  if (habits.length >= 3) earnedBadges.push({ name: "Habit Builder", emoji: "🎯" });
+  if (level >= 2) earnedBadges.push({ name: "Level Up!", emoji: "🏆" });
 
   return (
     <div className="min-h-screen p-4 md:p-8">
@@ -67,23 +76,23 @@ const Profile = () => {
           <div className="flex flex-col md:flex-row gap-6">
             <Avatar className="w-24 h-24 border-4 border-primary">
               <AvatarFallback className="text-3xl font-bold bg-gradient-primary text-white">
-                {user.avatar}
+                {avatarInitials}
               </AvatarFallback>
             </Avatar>
-            
+
             <div className="flex-1">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
                 <div>
-                  <h1 className="text-3xl font-bold mb-1">{user.name}</h1>
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                  <h1 className="text-3xl font-bold mb-1">{fullName}</h1>
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
                     <span className="flex items-center gap-1">
                       <Mail className="w-4 h-4" />
-                      {user.email}
+                      {authUser?.username ?? ""}
                     </span>
-                    {user.joinDate && (
+                    {joinDate && (
                       <span className="flex items-center gap-1">
                         <Calendar className="w-4 h-4" />
-                        Joined {user.joinDate}
+                        Joined {joinDate}
                       </span>
                     )}
                   </div>
@@ -100,8 +109,8 @@ const Profile = () => {
                     <Trophy className="w-5 h-5 text-primary" />
                     <span className="text-sm text-muted-foreground">Level & Rank</span>
                   </div>
-                  <p className="text-2xl font-bold">Level {user.level}</p>
-                  <Badge className="mt-1 bg-primary/20 text-primary">{user.rank}</Badge>
+                  <p className="text-2xl font-bold">Level {level}</p>
+                  <Badge className="mt-1 bg-primary/20 text-primary">Junior Achiever</Badge>
                 </div>
 
                 <div className="glass p-4 rounded-2xl">
@@ -109,10 +118,10 @@ const Profile = () => {
                     <Target className="w-5 h-5 text-secondary" />
                     <span className="text-sm text-muted-foreground">Sync Points</span>
                   </div>
-                  <p className="text-2xl font-bold">{user.syncPoints} SP</p>
-                  <Progress value={(user.syncPoints / user.nextLevelPoints) * 100} className="mt-2" />
+                  <p className="text-2xl font-bold">{syncPoints} SP</p>
+                  <Progress value={(syncPoints / nextLevelPoints) * 100} className="mt-2" />
                   <p className="text-xs text-muted-foreground mt-1">
-                    {user.nextLevelPoints - user.syncPoints} SP to next level
+                    {nextLevelPoints - syncPoints} SP to next level
                   </p>
                 </div>
 
@@ -121,24 +130,30 @@ const Profile = () => {
                     <Flame className="w-5 h-5 text-accent" />
                     <span className="text-sm text-muted-foreground">Current Streak</span>
                   </div>
-                  <p className="text-2xl font-bold">{user.streak} days</p>
-                  <p className="text-xs text-muted-foreground mt-1">Don't break it!</p>
+                  <p className="text-2xl font-bold">{longestStreak} days</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {longestStreak > 0 ? "Keep it going!" : "Start a habit to build your streak!"}
+                  </p>
                 </div>
               </div>
 
               <div>
                 <p className="text-sm text-muted-foreground mb-2">Badges Earned</p>
-                <div className="flex gap-2 flex-wrap">
-                  {user.badges.map((badge, index) => (
-                    <div
-                      key={index}
-                      className="glass px-3 py-2 rounded-xl flex items-center gap-2 hover:scale-105 transition-transform"
-                    >
-                      <span className="text-2xl">{badge.emoji}</span>
-                      <span className="text-sm font-medium">{badge.name}</span>
-                    </div>
-                  ))}
-                </div>
+                {earnedBadges.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Complete habits and earn SP to unlock badges!</p>
+                ) : (
+                  <div className="flex gap-2 flex-wrap">
+                    {earnedBadges.map((badge, index) => (
+                      <div
+                        key={index}
+                        className="glass px-3 py-2 rounded-xl flex items-center gap-2 hover:scale-105 transition-transform"
+                      >
+                        <span className="text-2xl">{badge.emoji}</span>
+                        <span className="text-sm font-medium">{badge.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -146,7 +161,7 @@ const Profile = () => {
 
         {/* Study Timer and Activity */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <StudyTimer />
+          <StudyTimer onPointsUpdated={setSyncPoints} />
           <div className="lg:col-span-2">
             <ActivityHeatmap />
           </div>

@@ -22,6 +22,12 @@ public class User implements UserDetails {
 
     private String surname;
     private Integer points;
+    private String major;
+    private String year;
+    private String studyStyle;
+    private String availability;
+    @Column(length = 500)
+    private String bio;
     private boolean isAccountNonExpired = true;
     private boolean isAccountNonLocked = true;
     private boolean isCredentialsNonExpired = true;

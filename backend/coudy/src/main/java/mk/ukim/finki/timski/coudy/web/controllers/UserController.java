@@ -85,4 +85,10 @@ public class UserController {
     public ResponseEntity<Integer> getPoints(@AuthenticationPrincipal User user) {
         return ResponseEntity.ok(user.getPoints() == null ? 0 : user.getPoints());
     }
+
+    @Operation(summary = "Get current user profile")
+    @GetMapping("/me")
+    public ResponseEntity<DisplayUserDto> getMe(@AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(DisplayUserDto.from(user));
+    }
 }

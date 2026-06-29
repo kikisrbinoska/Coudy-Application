@@ -78,10 +78,20 @@ public class DataInitializer implements ApplicationRunner {
         // ── Users ─────────────────────────────────────────────────────────────
         User user = new User("kikis", passwordEncoder.encode("password123"), "Kiki", "Test", Role.ROLE_USER);
         user.setPoints(0);
+        user.setMajor("Computer Science");
+        user.setYear("Junior");
+        user.setStudyStyle("Discussion");
+        user.setAvailability("Evenings");
+        user.setBio("Enjoys algorithm drills, systems topics, and collaborative study sessions.");
         userRepository.save(user);
 
         User admin = new User("admin", passwordEncoder.encode("admin123"), "Admin", "User", Role.ROLE_ADMIN);
         admin.setPoints(0);
+        admin.setMajor("Computer Science");
+        admin.setYear("Staff");
+        admin.setStudyStyle("Teaching");
+        admin.setAvailability("Flexible");
+        admin.setBio("Platform administrator and occasional study mentor.");
         userRepository.save(admin);
 
         // ── Courses ───────────────────────────────────────────────────────────
@@ -90,6 +100,40 @@ public class DataInitializer implements ApplicationRunner {
         Course st = new Course(); st.setCode("ST301"); st.setName("Software Testing"); st.setUser(user); entityManager.persist(st);
         Course cd = new Course(); cd.setCode("CD401"); cd.setName("CI/CD"); cd.setUser(user); entityManager.persist(cd);
         Course ap = new Course(); ap.setCode("AP501"); ap.setName("Advanced Programming"); ap.setUser(user); entityManager.persist(ap);
+
+        User maria = new User("maria", passwordEncoder.encode("password123"), "Maria", "Gonzales", Role.ROLE_USER);
+        maria.setPoints(320);
+        maria.setMajor("Mathematics");
+        maria.setYear("Sophomore");
+        maria.setStudyStyle("Problem Solving");
+        maria.setAvailability("Afternoons");
+        maria.setBio("Loves calculus, proof practice, and quick feedback loops.");
+        entityManager.persist(maria);
+
+        User nikola = new User("nikola", passwordEncoder.encode("password123"), "Nikola", "Petrov", Role.ROLE_USER);
+        nikola.setPoints(280);
+        nikola.setMajor("Physics");
+        nikola.setYear("Senior");
+        nikola.setStudyStyle("Teaching");
+        nikola.setAvailability("Evenings");
+        nikola.setBio("Physics tutor who likes whiteboard sessions and exam prep.");
+        entityManager.persist(nikola);
+
+        User ana = new User("ana", passwordEncoder.encode("password123"), "Ana", "Ilic", Role.ROLE_USER);
+        ana.setPoints(210);
+        ana.setMajor("Computer Science");
+        ana.setYear("Junior");
+        ana.setStudyStyle("Discussion");
+        ana.setAvailability("Flexible");
+        ana.setBio("Frontend and algorithms are the favorite combo.");
+        entityManager.persist(ana);
+
+        Course m1 = new Course(); m1.setCode("MTH201"); m1.setName("Linear Algebra"); m1.setUser(maria); entityManager.persist(m1);
+        Course m2 = new Course(); m2.setCode("MTH202"); m2.setName("Calculus II"); m2.setUser(maria); entityManager.persist(m2);
+        Course n1 = new Course(); n1.setCode("PHY301"); n1.setName("Thermodynamics"); n1.setUser(nikola); entityManager.persist(n1);
+        Course n2 = new Course(); n2.setCode("PHY302"); n2.setName("Quantum Mechanics"); n2.setUser(nikola); entityManager.persist(n2);
+        Course a1 = new Course(); a1.setCode("CS302"); a1.setName("Algorithms"); a1.setUser(ana); entityManager.persist(a1);
+        Course a2 = new Course(); a2.setCode("CS303"); a2.setName("Web Dev"); a2.setUser(ana); entityManager.persist(a2);
 
         entityManager.flush();
 
@@ -138,6 +182,71 @@ public class DataInitializer implements ApplicationRunner {
 
 
 
+
+        StudyBuddy buddy1 = new StudyBuddy();
+        buddy1.setUser1(user);
+        buddy1.setUser2(ana);
+        buddy1.setMatchScore(94);
+        buddy1.setStatus(BuddyStatus.ACTIVE);
+        buddy1.setMatchedAt(now.minusDays(4));
+        buddy1.setSessionCount(3);
+        entityManager.persist(buddy1);
+
+        StudyBuddy buddy2 = new StudyBuddy();
+        buddy2.setUser1(user);
+        buddy2.setUser2(maria);
+        buddy2.setMatchScore(87);
+        buddy2.setStatus(BuddyStatus.ACTIVE);
+        buddy2.setMatchedAt(now.minusDays(8));
+        buddy2.setSessionCount(5);
+        entityManager.persist(buddy2);
+
+        StudyBuddy buddy3 = new StudyBuddy();
+        buddy3.setUser1(user);
+        buddy3.setUser2(nikola);
+        buddy3.setMatchScore(82);
+        buddy3.setStatus(BuddyStatus.PENDING);
+        buddy3.setMatchedAt(now.minusDays(1));
+        buddy3.setSessionCount(0);
+        entityManager.persist(buddy3);
+
+        BuddySession session1 = new BuddySession();
+        session1.setStudyBuddy(buddy1);
+        session1.setScheduledTime(now.plusHours(2));
+        session1.setLocation("Library Room 2");
+        session1.setDurationMinutes(90);
+        session1.setAttendedUser1(false);
+        session1.setAttendedUser2(false);
+        session1.setNotes("Algorithms review");
+        session1.setStatus(SessionStatus.SCHEDULED);
+        entityManager.persist(session1);
+
+        BuddySession session2 = new BuddySession();
+        session2.setStudyBuddy(buddy2);
+        session2.setScheduledTime(now.plusDays(1).withHour(16).withMinute(0));
+        session2.setLocation("Campus cafe");
+        session2.setDurationMinutes(60);
+        session2.setAttendedUser1(true);
+        session2.setAttendedUser2(true);
+        session2.setRatingUser1(5);
+        session2.setRatingUser2(5);
+        session2.setNotes("Calculus practice");
+        session2.setStatus(SessionStatus.COMPLETED);
+        entityManager.persist(session2);
+
+        BuddyMessage message1 = new BuddyMessage();
+        message1.setStudyBuddy(buddy1);
+        message1.setSender(user);
+        message1.setContent("Are you free to review sorting algorithms later?");
+        message1.setSentAt(now.minusHours(3));
+        entityManager.persist(message1);
+
+        BuddyMessage message2 = new BuddyMessage();
+        message2.setStudyBuddy(buddy1);
+        message2.setSender(ana);
+        message2.setContent("Yes, let's do 7 PM.");
+        message2.setSentAt(now.minusHours(2));
+        entityManager.persist(message2);
 
         // ── Educational Games ─────────────────────────────────────────────────
         Game g1 = new Game();

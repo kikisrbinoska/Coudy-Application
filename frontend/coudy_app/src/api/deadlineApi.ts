@@ -19,12 +19,12 @@ export interface Deadline {
   course: Course;
   title: string;
   description: string;
-  dueDate: string;
-  estimatedHours: number;
+  due_date: string | number[];
+  estimated_hours: number;
   priority: Priority;
-  completionPercentage: number;
+  completion_percentage: number;
   status: DeadlineStatus;
-  createdAt: string;
+  created_at: string | number[];
 }
 
 export interface CreateDeadlineRequest {
@@ -33,10 +33,10 @@ export interface CreateDeadlineRequest {
   };
   title: string;
   description: string;
-  dueDate: string;
-  estimatedHours: number;
+  due_date: string;
+  estimated_hours: number;
   priority: Priority;
-  completionPercentage?: number;
+  completion_percentage?: number;
   status?: DeadlineStatus;
 }
 
@@ -55,4 +55,3 @@ const deadlineApi = {
 };
 
 export default deadlineApi;
-
