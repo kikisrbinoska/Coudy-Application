@@ -88,14 +88,26 @@ const Dashboard = () => {
     }
   };
 
-  const formatDueDate = (dateStr: string) => {
-    const due = new Date(dateStr);
+  const parseDueDate = (val: string | number[] | undefined): Date => {
+    if (!val) return new Date(NaN);
+    if (Array.isArray(val)) {
+      const [year, month, day, hour = 0, min = 0] = val as number[];
+      return new Date(year, month - 1, day, hour, min);
+    }
+    return new Date(val as string);
+  };
+
+  const formatDueDate = (val: string | number[] | undefined) => {
+    const due = parseDueDate(val);
+    if (isNaN(due.getTime())) return "No date";
     const now = new Date();
     const diffDays = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
     if (diffDays < 0) return "Overdue";
     if (diffDays === 0) return "Today";
     if (diffDays === 1) return "Tomorrow";
-    return `${diffDays} days`;
+    if (diffDays < 7) return `${diffDays} days`;
+    const weeks = Math.floor(diffDays / 7);
+    return `${weeks} week${weeks > 1 ? "s" : ""}`;
   };
 
   return (
@@ -248,17 +260,17 @@ const Dashboard = () => {
                         </p>
                       </div>
                       <Badge className={priorityColor(deadline.priority)}>
-                        {formatDueDate(deadline.dueDate)}
+                        {formatDueDate(deadline.due_date)}
                       </Badge>
                     </div>
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Progress</span>
-                        <span className="font-medium">{deadline.completionPercentage}%</span>
+                        <span className="font-medium">{deadline.completion_percentage ?? 0}%</span>
                       </div>
-                      <Progress value={deadline.completionPercentage} className="h-2" />
+                      <Progress value={deadline.completion_percentage ?? 0} className="h-2" />
                       <p className="text-xs text-muted-foreground">
-                        Estimated: {deadline.estimatedHours} hours remaining
+                        Estimated: {deadline.estimated_hours ?? 0} hours remaining
                       </p>
                     </div>
                   </div>

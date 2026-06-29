@@ -1,29 +1,4 @@
-import axios from "axios";
-
-const BASE_URL = import.meta.env.VITE_API_ORIGIN ?? "http://localhost:9096";
-
-const habitAxios = axios.create({
-  baseURL: BASE_URL,
-  headers: { "Content-Type": "application/json" },
-});
-
-habitAxios.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
-
-habitAxios.interceptors.response.use(
-  (r) => r,
-  (error) => {
-    if (error.response?.status === 401 || error.response?.status === 403) {
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      window.location.href = "/login";
-    }
-    return Promise.reject(error);
-  }
-);
+import axiosInstance from "./axios";
 
 export type HabitCategory = "ACADEMIC" | "WELLNESS" | "LIFE_BALANCE";
 export type TargetFrequency = "DAILY" | "WEEKLY" | "CUSTOM";
@@ -57,21 +32,21 @@ export interface WeeklySummary {
 }
 
 const habitApi = {
-  getAll: () => habitAxios.get<HabitDto[]>("/habits").then((r) => r.data),
+  getAll: () => axiosInstance.get<HabitDto[]>("/habits").then((r) => r.data),
 
   create: (data: CreateHabitRequest) =>
-    habitAxios.post<HabitDto>("/habits", data).then((r) => r.data),
+    axiosInstance.post<HabitDto>("/habits", data).then((r) => r.data),
 
   update: (id: number, data: Partial<CreateHabitRequest>) =>
-    habitAxios.put<HabitDto>(`/habits/${id}`, data).then((r) => r.data),
+    axiosInstance.put<HabitDto>(`/habits/${id}`, data).then((r) => r.data),
 
-  delete: (id: number) => habitAxios.delete(`/habits/${id}`),
+  delete: (id: number) => axiosInstance.delete(`/habits/${id}`),
 
   completeToday: (id: number) =>
-    habitAxios.post<HabitDto>(`/habits/${id}/complete`).then((r) => r.data),
+    axiosInstance.post<HabitDto>(`/habits/${id}/complete`).then((r) => r.data),
 
   getWeeklySummary: () =>
-    habitAxios.get<WeeklySummary[]>("/habit-logs/weekly-summary").then((r) => r.data),
+    axiosInstance.get<WeeklySummary[]>("/habit-logs/weekly-summary").then((r) => r.data),
 };
 
 export default habitApi;
