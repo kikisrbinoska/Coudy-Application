@@ -32,4 +32,11 @@ public class BuddySession {
 
     @Enumerated(EnumType.STRING)
     private SessionStatus status;
+
+    @ManyToOne
+    @JoinColumn(name = "created_by_username")
+    private User createdBy;
+
+    private LocalDateTime createdAt;
+    private LocalDateTime readAt;
 }

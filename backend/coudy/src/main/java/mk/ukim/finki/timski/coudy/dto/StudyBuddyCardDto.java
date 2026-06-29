@@ -21,6 +21,9 @@ public record StudyBuddyCardDto(
         String bio,
         BuddyStatus status,
         Integer sessionCount,
+        Integer unreadCount,
+        Integer unreadMessageCount,
+        Integer unreadSessionCount,
         LocalDateTime matchedAt,
         LocalDateTime nextSessionAt,
         String nextSessionLocation
@@ -47,6 +50,9 @@ public record StudyBuddyCardDto(
                 bio,
                 null,
                 null,
+                0,
+                0,
+                0,
                 null,
                 null,
                 null
@@ -58,7 +64,10 @@ public record StudyBuddyCardDto(
             User buddyUser,
             List<String> courses,
             LocalDateTime nextSessionAt,
-            String nextSessionLocation
+            String nextSessionLocation,
+            Integer unreadCount,
+            Integer unreadMessageCount,
+            Integer unreadSessionCount
     ) {
         return new StudyBuddyCardDto(
                 buddy.getId(),
@@ -74,6 +83,9 @@ public record StudyBuddyCardDto(
                 buddyUser.getBio(),
                 buddy.getStatus(),
                 buddy.getSessionCount(),
+                unreadCount,
+                unreadMessageCount,
+                unreadSessionCount,
                 buddy.getMatchedAt(),
                 nextSessionAt,
                 nextSessionLocation

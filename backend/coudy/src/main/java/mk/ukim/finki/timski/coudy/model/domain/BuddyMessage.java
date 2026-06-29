@@ -29,4 +29,5 @@ public class BuddyMessage {
 
     private String content;
     private LocalDateTime sentAt;
+    private LocalDateTime readAt;
 }

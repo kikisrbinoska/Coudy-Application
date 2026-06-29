@@ -39,4 +39,5 @@ public class BuddyConnectionRequest {
 
     private LocalDateTime createdAt;
     private LocalDateTime respondedAt;
+    private LocalDateTime readAt;
 }

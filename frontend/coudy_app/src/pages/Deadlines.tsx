@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
@@ -48,7 +48,6 @@ const Deadlines = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [deletingDeadlineId, setDeletingDeadlineId] = useState<number | null>(null);
   const [courses, setCourses] = useState<Course[]>([]);
@@ -64,13 +63,13 @@ const Deadlines = () => {
   }, []);
 
   useEffect(() => {
-    if (dialogOpen || editDialogOpen) {
+    if (dialogOpen) {
       loadCourses();
     } else {
       setEditingDeadline(null);
       setForm(EMPTY_FORM);
     }
-  }, [dialogOpen, editDialogOpen]);
+  }, [dialogOpen]);
 
   const loadDeadlines = async () => {
     setLoadingDeadlines(true);
@@ -117,7 +116,6 @@ const Deadlines = () => {
     setEditingDeadline(null);
     setForm(EMPTY_FORM);
     setDialogOpen(true);
-    setEditDialogOpen(false);
   };
 
   const openEditDialog = async (deadline: Deadline) => {
@@ -140,7 +138,7 @@ const Deadlines = () => {
       completion_percentage: deadline.completion_percentage ?? 0,
       status: deadline.status ?? "NOT_STARTED",
     });
-    setEditDialogOpen(true);
+    setDialogOpen(true);
   };
 
   const buildDeadlinePayload = (): Deadline => {
@@ -234,7 +232,7 @@ const Deadlines = () => {
     try {
       const result = await deadlineApi.update(buildDeadlinePayload());
       setDeadlines((prev) => prev.map((d) => (d.id === result.id ? result : d)));
-      setEditDialogOpen(false);
+      setDialogOpen(false);
       setEditingDeadline(null);
       setForm(EMPTY_FORM);
       toast({
@@ -298,7 +296,7 @@ const Deadlines = () => {
   };
 
   const handleMarkComplete = (deadline: Deadline) => handleStatusChange(deadline, "COMPLETED");
-  const isEditingDeadline = editDialogOpen;
+  const isEditingDeadline = editingDeadline !== null;
 
   return (
     <div className="min-h-screen p-4 md:p-8">
@@ -317,10 +315,9 @@ const Deadlines = () => {
                 View Schedule
               </Button>
               <Dialog
-                open={dialogOpen || editDialogOpen}
+                open={dialogOpen}
                 onOpenChange={(open) => {
                   setDialogOpen(open);
-                  setEditDialogOpen(open);
                   if (!open) {
                     setEditingDeadline(null);
                     setForm(EMPTY_FORM);
@@ -336,6 +333,11 @@ const Deadlines = () => {
                 <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>{isEditingDeadline ? "Edit Deadline" : "Create New Deadline"}</DialogTitle>
+                    <DialogDescription>
+                      {isEditingDeadline
+                        ? "Update the deadline details and save your changes."
+                        : "Create a new deadline and set its schedule."}
+                    </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 pt-2">
                     <div className="space-y-1">

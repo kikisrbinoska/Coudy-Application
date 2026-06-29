@@ -2,6 +2,7 @@ package mk.ukim.finki.timski.coudy.service.domain.impl;
 
 import mk.ukim.finki.timski.coudy.dto.BuddyMessageDto;
 import mk.ukim.finki.timski.coudy.dto.BuddyConnectionRequestDto;
+import mk.ukim.finki.timski.coudy.dto.BuddyNotificationDto;
 import mk.ukim.finki.timski.coudy.dto.BuddySessionDto;
 import mk.ukim.finki.timski.coudy.dto.CreateBuddySessionRequest;
 import mk.ukim.finki.timski.coudy.dto.SendBuddyMessageRequest;
@@ -13,6 +14,7 @@ import mk.ukim.finki.timski.coudy.model.domain.Course;
 import mk.ukim.finki.timski.coudy.model.domain.StudyBuddy;
 import mk.ukim.finki.timski.coudy.model.domain.User;
 import mk.ukim.finki.timski.coudy.model.enumerations.BuddyRequestStatus;
+import mk.ukim.finki.timski.coudy.model.enumerations.BuddyNotificationType;
 import mk.ukim.finki.timski.coudy.model.enumerations.BuddyStatus;
 import mk.ukim.finki.timski.coudy.model.enumerations.SessionStatus;
 import mk.ukim.finki.timski.coudy.repository.BuddyConnectionRequestRepository;
@@ -24,6 +26,7 @@ import mk.ukim.finki.timski.coudy.repository.UserRepository;
 import mk.ukim.finki.timski.coudy.service.domain.StudyBuddyService;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
@@ -62,7 +65,7 @@ public class StudyBuddyServiceImpl implements StudyBuddyService {
     @Override
     public List<StudyBuddyCardDto> discover(User user) {
         Set<String> myCourseNames = courseNamesFor(user);
-        List<StudyBuddy> existingBuddies = studyBuddyRepository.findAllForUser(user.getUsername());
+        List<StudyBuddy> existingBuddies = studyBuddyRepository.findAllForUserByStatus(user.getUsername(), BuddyStatus.ACTIVE);
         Set<String> existingUsernames = existingBuddies.stream()
                 .map(b -> partnerUsername(b, user.getUsername()))
                 .collect(Collectors.toSet());
@@ -99,7 +102,7 @@ public class StudyBuddyServiceImpl implements StudyBuddyService {
     @Override
     public List<StudyBuddyCardDto> myBuddies(User user) {
         List<StudyBuddyCardDto> cards = new ArrayList<>();
-        for (StudyBuddy buddy : studyBuddyRepository.findAllForUser(user.getUsername())) {
+        for (StudyBuddy buddy : studyBuddyRepository.findAllForUserByStatus(user.getUsername(), BuddyStatus.ACTIVE)) {
             User partner = buddy.getUser1().getUsername().equals(user.getUsername()) ? buddy.getUser2() : buddy.getUser1();
             List<String> partnerCourses = courseNamesFor(partner).stream().sorted().toList();
             BuddySession nextSession = buddySessionRepository.findByStudyBuddyIdOrderByScheduledTimeDesc(buddy.getId())
@@ -109,13 +112,18 @@ public class StudyBuddyServiceImpl implements StudyBuddyService {
                     .sorted(Comparator.comparing(BuddySession::getScheduledTime, Comparator.nullsLast(Comparator.naturalOrder())))
                     .findFirst()
                     .orElse(null);
+            int unreadMessageCount = Math.toIntExact(buddyMessageRepository.countUnreadForBuddy(user.getUsername(), buddy.getId()));
+            int unreadSessionCount = Math.toIntExact(buddySessionRepository.countUnreadForBuddy(user.getUsername(), buddy.getId()));
 
             cards.add(StudyBuddyCardDto.fromBuddy(
                     buddy,
                     partner,
                     partnerCourses,
                     nextSession != null ? nextSession.getScheduledTime() : null,
-                    nextSession != null ? nextSession.getLocation() : null
+                    nextSession != null ? nextSession.getLocation() : null,
+                    unreadMessageCount + unreadSessionCount,
+                    unreadMessageCount,
+                    unreadSessionCount
             ));
         }
         return cards;
@@ -138,6 +146,77 @@ public class StudyBuddyServiceImpl implements StudyBuddyService {
     }
 
     @Override
+    public List<BuddyNotificationDto> notifications(User user) {
+        List<BuddyNotificationDto> notifications = new ArrayList<>();
+
+        buddyConnectionRequestRepository.findUnreadIncoming(user.getUsername(), BuddyRequestStatus.PENDING)
+                .forEach(request -> notifications.add(new BuddyNotificationDto(
+                        BuddyNotificationType.CONNECTION_REQUEST,
+                        request.getId(),
+                        null,
+                        null,
+                        request.getSender() != null ? request.getSender().getUsername() : null,
+                        request.getSender() != null ? request.getSender().getName() : null,
+                        request.getSender() != null ? request.getSender().getSurname() : null,
+                        "Connection request",
+                        request.getMessage(),
+                        request.getCreatedAt()
+                )));
+
+        buddyMessageRepository.findUnreadForUser(user.getUsername())
+                .forEach(message -> notifications.add(new BuddyNotificationDto(
+                        BuddyNotificationType.MESSAGE,
+                        null,
+                        message.getStudyBuddy() != null ? message.getStudyBuddy().getId() : null,
+                        null,
+                        message.getSender() != null ? message.getSender().getUsername() : null,
+                        message.getSender() != null ? message.getSender().getName() : null,
+                        message.getSender() != null ? message.getSender().getSurname() : null,
+                        "New message",
+                        message.getContent(),
+                        message.getSentAt()
+                )));
+
+        buddySessionRepository.findUnreadForUser(user.getUsername())
+                .forEach(session -> notifications.add(new BuddyNotificationDto(
+                        BuddyNotificationType.SESSION,
+                        null,
+                        session.getStudyBuddy() != null ? session.getStudyBuddy().getId() : null,
+                        session.getId(),
+                        session.getCreatedBy() != null ? session.getCreatedBy().getUsername() : null,
+                        session.getCreatedBy() != null ? session.getCreatedBy().getName() : null,
+                        session.getCreatedBy() != null ? session.getCreatedBy().getSurname() : null,
+                        "Study session scheduled",
+                        session.getLocation() != null
+                                ? session.getLocation()
+                                : "A study session was created.",
+                        session.getCreatedAt()
+                )));
+
+        notifications.sort(Comparator.comparing(BuddyNotificationDto::createdAt, Comparator.nullsLast(Comparator.naturalOrder())).reversed());
+        return notifications;
+    }
+
+    @Override
+    public long unreadNotificationCount(User user) {
+        return buddyConnectionRequestRepository.countUnreadIncoming(user.getUsername(), BuddyRequestStatus.PENDING)
+                + buddyMessageRepository.countUnreadForUser(user.getUsername())
+                + buddySessionRepository.countUnreadForUser(user.getUsername());
+    }
+
+    @Override
+    @Transactional
+    public void markNotificationsRead(User user) {
+        buddyConnectionRequestRepository.markUnreadIncomingAsRead(
+                user.getUsername(),
+                BuddyRequestStatus.PENDING,
+                LocalDateTime.now()
+        );
+        buddyMessageRepository.markUnreadForUserAsRead(user.getUsername(), LocalDateTime.now());
+        buddySessionRepository.markUnreadForUserAsRead(user.getUsername(), LocalDateTime.now());
+    }
+
+    @Override
     public BuddyConnectionRequestDto connect(User user, String otherUsername) {
         if (otherUsername == null || otherUsername.isBlank() || otherUsername.equals(user.getUsername())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid buddy username");
@@ -146,8 +225,35 @@ public class StudyBuddyServiceImpl implements StudyBuddyService {
         User otherUser = userRepository.findByUsername(otherUsername)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
-        if (studyBuddyRepository.findPair(user.getUsername(), otherUsername).isPresent()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "You are already connected");
+        StudyBuddy existingBuddy = studyBuddyRepository.findPair(user.getUsername(), otherUsername)
+                .orElse(null);
+        if (existingBuddy != null) {
+            if (existingBuddy.getStatus() == BuddyStatus.ACTIVE) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "You are already connected");
+            }
+
+            existingBuddy.setStatus(BuddyStatus.ACTIVE);
+            studyBuddyRepository.save(existingBuddy);
+
+            BuddyConnectionRequest acceptedRequest = buddyConnectionRequestRepository
+                    .findBetween(user.getUsername(), otherUsername, BuddyRequestStatus.ACCEPTED)
+                    .stream()
+                    .findFirst()
+                    .orElse(null);
+
+            if (acceptedRequest != null) {
+                return BuddyConnectionRequestDto.from(acceptedRequest);
+            }
+
+            BuddyConnectionRequest fallbackRequest = new BuddyConnectionRequest();
+            fallbackRequest.setSender(user);
+            fallbackRequest.setReceiver(otherUser);
+            fallbackRequest.setStatus(BuddyRequestStatus.ACCEPTED);
+            fallbackRequest.setCreatedAt(existingBuddy.getMatchedAt() != null ? existingBuddy.getMatchedAt() : LocalDateTime.now());
+            fallbackRequest.setRespondedAt(LocalDateTime.now());
+            fallbackRequest.setReadAt(LocalDateTime.now());
+            fallbackRequest.setMessage("Study buddy connection restored");
+            return BuddyConnectionRequestDto.from(buddyConnectionRequestRepository.save(fallbackRequest));
         }
 
         buddyConnectionRequestRepository.findPendingBetween(user.getUsername(), otherUsername)
@@ -212,12 +318,28 @@ public class StudyBuddyServiceImpl implements StudyBuddyService {
     }
 
     @Override
+    @Transactional
+    public void removeBuddy(User user, Long buddyId) {
+        StudyBuddy buddy = findOwnedBuddy(buddyId, user);
+        buddy.setStatus(BuddyStatus.INACTIVE);
+        studyBuddyRepository.save(buddy);
+    }
+
+    @Override
     public List<BuddySessionDto> sessions(User user, Long buddyId) {
         StudyBuddy buddy = findOwnedBuddy(buddyId, user);
         return buddySessionRepository.findByStudyBuddyIdOrderByScheduledTimeDesc(buddy.getId())
                 .stream()
                 .map(BuddySessionDto::from)
                 .toList();
+    }
+
+    @Override
+    @Transactional
+    public void markBuddyMessagesRead(User user, Long buddyId) {
+        StudyBuddy buddy = findOwnedBuddy(buddyId, user);
+        buddyMessageRepository.markUnreadForBuddyAsRead(user.getUsername(), buddy.getId(), LocalDateTime.now());
+        buddySessionRepository.markUnreadForBuddyAsRead(user.getUsername(), buddy.getId(), LocalDateTime.now());
     }
 
     @Override
@@ -232,6 +354,9 @@ public class StudyBuddyServiceImpl implements StudyBuddyService {
         session.setAttendedUser2(false);
         session.setStatus(SessionStatus.SCHEDULED);
         session.setNotes(request.notes());
+        session.setCreatedBy(user);
+        session.setCreatedAt(LocalDateTime.now());
+        session.setReadAt(null);
 
         BuddySession saved = buddySessionRepository.save(session);
         buddy.setSessionCount((buddy.getSessionCount() == null ? 0 : buddy.getSessionCount()) + 1);
@@ -240,7 +365,9 @@ public class StudyBuddyServiceImpl implements StudyBuddyService {
     }
 
     @Override
+    @Transactional
     public List<BuddyMessageDto> messages(User user, Long buddyId) {
+        markBuddyMessagesRead(user, buddyId);
         findOwnedBuddy(buddyId, user);
         return buddyMessageRepository.findByStudyBuddyIdOrderBySentAtAsc(buddyId)
                 .stream()
