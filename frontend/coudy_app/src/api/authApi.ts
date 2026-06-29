@@ -3,7 +3,7 @@ import axiosInstance from "./axios";
 export interface CreateUserDto {
   username: string;
   password: string;
-  repeatPassword: string;
+  repeat_password: string;
   name: string;
   surname: string;
   role: string;
