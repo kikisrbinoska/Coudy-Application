@@ -1,6 +1,8 @@
 import { Card } from "@/components/ui/card";
-import { Calendar, Loader2 } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { Calendar, Loader2, Trash2 } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 import scheduleApi, { StudyBlock } from "@/api/scheduleApi";
 
 const getMonday = (date: Date) => {
@@ -24,12 +26,24 @@ const PRIORITY_GRADIENT: Record<string, string> = {
 };
 
 const StudyTimetable = () => {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const weekStart = getMonday(new Date());
 
   const { data: schedule, isLoading, isError } = useQuery({
     queryKey: ["schedule", weekStart],
     queryFn: () => scheduleApi.getForWeek(weekStart),
     retry: false,
+  });
+
+  const deleteBlockMutation = useMutation({
+    mutationFn: (blockId: number) => scheduleApi.deleteBlock(blockId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["schedule", weekStart] });
+      queryClient.invalidateQueries({ queryKey: ["workload", weekStart] });
+      toast({ title: "Study block removed" });
+    },
+    onError: () => toast({ title: "Failed to remove study block", variant: "destructive" }),
   });
 
   if (isLoading) {
@@ -67,7 +81,8 @@ const StudyTimetable = () => {
       <div className="flex items-center gap-2 mb-6">
         <Calendar className="w-5 h-5 text-primary" />
         <h3 className="text-xl font-bold">Weekly Study Schedule</h3>
-        <span className="ml-auto text-xs text-muted-foreground">Week of {weekStart}</span>
+        <a href="/schedule" className="ml-auto text-xs text-primary underline">Edit →</a>
+        <span className="text-xs text-muted-foreground">Week of {weekStart}</span>
       </div>
 
       <div className="space-y-4">
@@ -83,9 +98,9 @@ const StudyTimetable = () => {
                 <span className="text-xs text-muted-foreground">{totalHours}h total</span>
               </div>
               <div className="space-y-2">
-                {blocks.map((block, i) => (
+                {blocks.map((block) => (
                   <div
-                    key={i}
+                    key={block.id}
                     className={`${PRIORITY_GRADIENT[block.priority] ?? "bg-gradient-to-br from-primary to-secondary"} p-3 rounded-xl text-white shadow-md`}
                   >
                     <div className="flex justify-between items-start">
@@ -103,6 +118,15 @@ const StudyTimetable = () => {
                         <span className="text-xs bg-white/20 px-2 py-1 rounded">
                           {block.priority}
                         </span>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-6 w-6 text-white/80 hover:text-white hover:bg-white/20"
+                          onClick={() => deleteBlockMutation.mutate(block.id)}
+                          disabled={deleteBlockMutation.isPending}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
                       </div>
                     </div>
                   </div>

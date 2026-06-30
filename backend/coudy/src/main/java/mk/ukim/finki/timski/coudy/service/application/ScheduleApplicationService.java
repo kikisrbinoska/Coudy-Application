@@ -18,4 +18,8 @@ public interface ScheduleApplicationService {
     WeeklyWorkloadDto getWorkloadSummary(String username, LocalDate weekStart);
 
     List<ScheduleResponse> getAdherenceHistory(String username);
+
+    ScheduleResponse updateStudyBlock(String username, Long blockId, UpdateStudyBlockRequest request);
+
+    ScheduleResponse deleteStudyBlock(String username, Long blockId);
 }

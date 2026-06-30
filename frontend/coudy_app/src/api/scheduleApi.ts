@@ -7,6 +7,7 @@ export interface TimeSlot {
 }
 
 export interface StudyBlock {
+  id: number;
   day: string;
   start_time: string;
   end_time: string;
@@ -15,6 +16,12 @@ export interface StudyBlock {
   deadline_title: string;
   allocated_minutes: number;
   priority: "HIGH" | "MEDIUM" | "LOW";
+}
+
+export interface UpdateStudyBlockRequest {
+  day?: string;
+  start_time?: string;
+  end_time?: string;
 }
 
 export interface ScheduleResponse {
@@ -59,6 +66,12 @@ const scheduleApi = {
     axiosInstance
       .patch<ScheduleResponse>(`/schedules/${scheduleId}/adherence`, { was_followed: wasFollowed, adherence_percentage: adherencePercentage })
       .then((r) => r.data),
+
+  updateBlock: (blockId: number, data: UpdateStudyBlockRequest) =>
+    axiosInstance.patch<ScheduleResponse>(`/schedules/blocks/${blockId}`, data).then((r) => r.data),
+
+  deleteBlock: (blockId: number) =>
+    axiosInstance.delete<ScheduleResponse>(`/schedules/blocks/${blockId}`).then((r) => r.data),
 };
 
 export default scheduleApi;

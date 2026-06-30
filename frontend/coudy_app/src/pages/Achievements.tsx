@@ -1,103 +1,161 @@
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Star, Lock } from "lucide-react";
+import { Trophy, Star, Lock, Loader2 } from "lucide-react";
+import focusApi, { FocusStatsDto } from "@/api/focusApi";
+import habitApi, { HabitDto } from "@/api/habitApi";
+import deadlineApi, { Deadline } from "@/api/deadlineApi";
+import studyBuddyApi, { StudyBuddyCard } from "@/api/studyBuddyApi";
+
+type Rarity = "Common" | "Rare" | "Epic" | "Legendary" | "Mythic";
+
+interface AchievementDef {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  points: number;
+  rarity: Rarity;
+  category: "Study" | "Deadlines" | "Habits" | "Social";
+  current: number;
+  target: number;
+}
 
 const Achievements = () => {
-  const earnedAchievements = [
+  const [loading, setLoading] = useState(true);
+  const [focusStats, setFocusStats] = useState<FocusStatsDto>({ total_sessions: 0, total_minutes: 0, total_points_earned: 0 });
+  const [habits, setHabits] = useState<HabitDto[]>([]);
+  const [deadlines, setDeadlines] = useState<Deadline[]>([]);
+  const [buddies, setBuddies] = useState<StudyBuddyCard[]>([]);
+  const [syncPoints, setSyncPoints] = useState(0);
+
+  useEffect(() => {
+    Promise.allSettled([
+      focusApi.getStats().then(setFocusStats),
+      habitApi.getAll().then(setHabits),
+      deadlineApi.getAll().then(setDeadlines),
+      studyBuddyApi.mine().then(setBuddies),
+      focusApi.getPoints().then(setSyncPoints),
+    ]).finally(() => setLoading(false));
+  }, []);
+
+  const longestStreak = habits.length ? Math.max(...habits.map((h) => h.streak_longest ?? 0)) : 0;
+  const currentStreak = habits.length ? Math.max(...habits.map((h) => h.streak_current ?? 0)) : 0;
+  const completedDeadlines = deadlines.filter((d) => d.status === "COMPLETED").length;
+  const overdueDeadlines = deadlines.filter((d) => d.status === "OVERDUE").length;
+  const totalStudyHours = Math.round((focusStats.total_minutes / 60) * 10) / 10;
+
+  const achievementDefs: AchievementDef[] = [
     {
-      id: 1,
+      id: "week-warrior",
       title: "Week Warrior",
-      description: "Study for 7 consecutive days",
+      description: "Reach a 7-day habit streak",
       icon: "🔥",
       points: 200,
       rarity: "Epic",
-      earnedDate: "Dec 1, 2024",
+      category: "Habits",
+      current: currentStreak,
+      target: 7,
     },
     {
-      id: 2,
-      title: "Quiz Master",
-      description: "Complete 25 AI-generated quizzes",
-      icon: "🎯",
-      points: 150,
-      rarity: "Rare",
-      earnedDate: "Nov 28, 2024",
-    },
-    {
-      id: 3,
+      id: "perfect-record",
       title: "Perfect Record",
-      description: "30 days with zero late submissions",
+      description: "Complete 10 deadlines with zero overdue",
       icon: "🏆",
       points: 300,
       rarity: "Legendary",
-      earnedDate: "Nov 25, 2024",
+      category: "Deadlines",
+      current: overdueDeadlines === 0 ? completedDeadlines : 0,
+      target: 10,
     },
     {
-      id: 4,
+      id: "study-squad",
       title: "Study Squad",
-      description: "Complete 10 study buddy sessions",
+      description: "Connect with 5 study buddies",
       icon: "🤝",
       points: 100,
       rarity: "Common",
-      earnedDate: "Nov 20, 2024",
+      category: "Social",
+      current: buddies.length,
+      target: 5,
     },
     {
-      id: 5,
+      id: "chain-maker",
       title: "Chain Maker",
-      description: "Achieve 30-day habit streak",
+      description: "Achieve a 30-day habit streak",
       icon: "🔗",
       points: 250,
       rarity: "Epic",
-      earnedDate: "Nov 15, 2024",
+      category: "Habits",
+      current: longestStreak,
+      target: 30,
     },
     {
-      id: 6,
-      title: "Early Bird",
-      description: "Study before 8 AM for 7 days",
-      icon: "☀️",
-      points: 100,
-      rarity: "Rare",
-      earnedDate: "Nov 10, 2024",
-    },
-  ];
-
-  const lockedAchievements = [
-    {
-      id: 7,
-      title: "Phoenix Rising",
-      description: "Recover from crisis mode and complete all deadlines",
-      icon: "🔥",
-      points: 500,
-      rarity: "Legendary",
-      progress: 60,
-    },
-    {
-      id: 8,
-      title: "Consistency King",
-      description: "Maintain 90-day habit streak",
-      icon: "👑",
-      points: 1000,
-      rarity: "Mythic",
-      progress: 33,
-    },
-    {
-      id: 9,
-      title: "Social Scholar",
-      description: "Match with 5 different study buddies",
-      icon: "👥",
-      points: 150,
-      rarity: "Rare",
-      progress: 40,
-    },
-    {
-      id: 10,
-      title: "Marathon Master",
-      description: "Study 5+ hours in one day",
+      id: "focus-marathon",
+      title: "Focus Marathon",
+      description: "Accumulate 50 hours of focused study",
       icon: "📚",
       points: 200,
       rarity: "Epic",
-      progress: 0,
+      category: "Study",
+      current: totalStudyHours,
+      target: 50,
+    },
+    {
+      id: "sp-milestone",
+      title: "Point Collector",
+      description: "Earn 1000 Sync Points",
+      icon: "⭐",
+      points: 150,
+      rarity: "Rare",
+      category: "Study",
+      current: syncPoints,
+      target: 1000,
+    },
+    {
+      id: "deadline-crusher",
+      title: "Deadline Crusher",
+      description: "Complete 10 deadlines",
+      icon: "✅",
+      points: 150,
+      rarity: "Rare",
+      category: "Deadlines",
+      current: completedDeadlines,
+      target: 10,
+    },
+    {
+      id: "consistency-king",
+      title: "Consistency King",
+      description: "Maintain a 90-day habit streak",
+      icon: "👑",
+      points: 1000,
+      rarity: "Mythic",
+      category: "Habits",
+      current: longestStreak,
+      target: 90,
+    },
+    {
+      id: "social-scholar",
+      title: "Social Scholar",
+      description: "Connect with 3 different study buddies",
+      icon: "👥",
+      points: 100,
+      rarity: "Rare",
+      category: "Social",
+      current: buddies.length,
+      target: 3,
     },
   ];
+
+  const earnedAchievements = achievementDefs.filter((a) => a.current >= a.target);
+  const lockedAchievements = achievementDefs
+    .filter((a) => a.current < a.target)
+    .map((a) => ({ ...a, progress: Math.min(100, Math.round((a.current / a.target) * 100)) }));
+
+  const categoryCounts = achievementDefs.reduce<Record<string, number>>((acc, a) => {
+    acc[a.category] = (acc[a.category] ?? 0) + 1;
+    return acc;
+  }, {});
 
   const rarityColor = (rarity: string) => {
     switch (rarity) {
@@ -115,6 +173,14 @@ const Achievements = () => {
         return "bg-muted text-muted-foreground";
     }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen p-4 md:p-8">
@@ -164,29 +230,30 @@ const Achievements = () => {
         {/* Earned Achievements */}
         <div className="space-y-4">
           <h2 className="text-2xl font-bold">Your Achievements</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {earnedAchievements.map((achievement) => (
-              <Card
-                key={achievement.id}
-                className="glass-card p-6 border-0 hover:scale-105 transition-transform"
-              >
-                <div className="text-center">
-                  <div className="text-6xl mb-4 animate-float">{achievement.icon}</div>
-                  <Badge className={rarityColor(achievement.rarity)} variant="outline">
-                    {achievement.rarity}
-                  </Badge>
-                  <h3 className="text-xl font-bold mt-3 mb-2">{achievement.title}</h3>
-                  <p className="text-sm text-muted-foreground mb-4">{achievement.description}</p>
-                  <div className="flex justify-center gap-4 text-sm">
-                    <div>
-                      <span className="text-primary font-bold">+{achievement.points} SP</span>
-                    </div>
-                    <div className="text-muted-foreground">{achievement.earnedDate}</div>
+          {earnedAchievements.length === 0 ? (
+            <Card className="glass-card p-12 border-0 text-center">
+              <p className="text-muted-foreground">No badges earned yet. Keep studying to unlock your first one!</p>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {earnedAchievements.map((achievement) => (
+                <Card
+                  key={achievement.id}
+                  className="glass-card p-6 border-0 hover:scale-105 transition-transform"
+                >
+                  <div className="text-center">
+                    <div className="text-6xl mb-4 animate-float">{achievement.icon}</div>
+                    <Badge className={rarityColor(achievement.rarity)} variant="outline">
+                      {achievement.rarity}
+                    </Badge>
+                    <h3 className="text-xl font-bold mt-3 mb-2">{achievement.title}</h3>
+                    <p className="text-sm text-muted-foreground mb-4">{achievement.description}</p>
+                    <span className="text-primary font-bold text-sm">+{achievement.points} SP</span>
                   </div>
-                </div>
-              </Card>
-            ))}
-          </div>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Locked Achievements */}
@@ -234,22 +301,22 @@ const Achievements = () => {
             <div className="glass p-4 rounded-2xl text-center hover:scale-105 transition-transform">
               <div className="text-4xl mb-2">📚</div>
               <h3 className="font-semibold">Study</h3>
-              <p className="text-xs text-muted-foreground mt-1">15 badges</p>
+              <p className="text-xs text-muted-foreground mt-1">{categoryCounts.Study ?? 0} badges</p>
             </div>
             <div className="glass p-4 rounded-2xl text-center hover:scale-105 transition-transform">
               <div className="text-4xl mb-2">📅</div>
               <h3 className="font-semibold">Deadlines</h3>
-              <p className="text-xs text-muted-foreground mt-1">12 badges</p>
+              <p className="text-xs text-muted-foreground mt-1">{categoryCounts.Deadlines ?? 0} badges</p>
             </div>
             <div className="glass p-4 rounded-2xl text-center hover:scale-105 transition-transform">
               <div className="text-4xl mb-2">🎯</div>
               <h3 className="font-semibold">Habits</h3>
-              <p className="text-xs text-muted-foreground mt-1">18 badges</p>
+              <p className="text-xs text-muted-foreground mt-1">{categoryCounts.Habits ?? 0} badges</p>
             </div>
             <div className="glass p-4 rounded-2xl text-center hover:scale-105 transition-transform">
               <div className="text-4xl mb-2">👥</div>
               <h3 className="font-semibold">Social</h3>
-              <p className="text-xs text-muted-foreground mt-1">10 badges</p>
+              <p className="text-xs text-muted-foreground mt-1">{categoryCounts.Social ?? 0} badges</p>
             </div>
           </div>
         </Card>

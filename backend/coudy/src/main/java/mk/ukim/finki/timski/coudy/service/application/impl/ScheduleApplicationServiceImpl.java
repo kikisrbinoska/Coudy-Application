@@ -1,20 +1,19 @@
 package mk.ukim.finki.timski.coudy.service.application.impl;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import lombok.RequiredArgsConstructor;
 import mk.ukim.finki.timski.coudy.dto.*;
 import mk.ukim.finki.timski.coudy.model.domain.Deadline;
 import mk.ukim.finki.timski.coudy.model.domain.Schedule;
+import mk.ukim.finki.timski.coudy.model.domain.StudyBlock;
 import mk.ukim.finki.timski.coudy.model.domain.User;
 import mk.ukim.finki.timski.coudy.repository.DeadlineRepository;
 import mk.ukim.finki.timski.coudy.repository.ScheduleRepository;
+import mk.ukim.finki.timski.coudy.repository.StudyBlockRepository;
 import mk.ukim.finki.timski.coudy.repository.UserRepository;
 import mk.ukim.finki.timski.coudy.service.application.ScheduleApplicationService;
 import mk.ukim.finki.timski.coudy.service.domain.ScheduleGenerationDomainService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -24,15 +23,14 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ScheduleApplicationServiceImpl implements ScheduleApplicationService {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
-            .registerModule(new JavaTimeModule());
-
     private final ScheduleRepository scheduleRepository;
+    private final StudyBlockRepository studyBlockRepository;
     private final UserRepository userRepository;
     private final DeadlineRepository deadlineRepository;
     private final ScheduleGenerationDomainService domainService;
 
     @Override
+    @Transactional
     public ScheduleResponse generateWeeklySchedule(String username, GenerateScheduleRequest request) {
         if (request.getWeekStart() == null) {
             throw new IllegalArgumentException("weekStart is required");
@@ -62,14 +60,15 @@ public class ScheduleApplicationServiceImpl implements ScheduleApplicationServic
         Schedule schedule = new Schedule();
         schedule.setUser(user);
         schedule.setWeekStart(request.getWeekStart());
-        schedule.setScheduleJson(serialize(blocks));
         schedule.setGeneratedAt(LocalDateTime.now());
+        schedule.setStudyBlocks(blocks.stream().map(b -> toEntity(b, schedule)).toList());
 
         scheduleRepository.save(schedule);
-        return mapToResponse(schedule, blocks);
+        return mapToResponse(schedule);
     }
 
     @Override
+    @Transactional
     public ScheduleResponse regenerateSchedule(String username, GenerateScheduleRequest request) {
         if (scheduleRepository.existsByUserUsernameAndWeekStart(username, request.getWeekStart())) {
             scheduleRepository.deleteByUserUsernameAndWeekStart(username, request.getWeekStart());
@@ -82,17 +81,18 @@ public class ScheduleApplicationServiceImpl implements ScheduleApplicationServic
         Schedule schedule = scheduleRepository
                 .findByUserUsernameAndWeekStart(username, weekStart)
                 .orElseThrow(() -> new RuntimeException("No schedule found for this week"));
-        return mapToResponse(schedule, deserialize(schedule.getScheduleJson()));
+        return mapToResponse(schedule);
     }
 
     @Override
+    @Transactional
     public ScheduleResponse updateAdherence(Long scheduleId, ScheduleAdherenceRequest request) {
         Schedule schedule = scheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> new RuntimeException("Schedule not found"));
         schedule.setWasFollowed(request.getWasFollowed());
         schedule.setAdherencePercentage(request.getAdherencePercentage());
         scheduleRepository.save(schedule);
-        return mapToResponse(schedule, deserialize(schedule.getScheduleJson()));
+        return mapToResponse(schedule);
     }
 
     @Override
@@ -100,38 +100,73 @@ public class ScheduleApplicationServiceImpl implements ScheduleApplicationServic
         Schedule schedule = scheduleRepository
                 .findByUserUsernameAndWeekStart(username, weekStart)
                 .orElseThrow(() -> new RuntimeException("No schedule found for this week"));
-        return domainService.calculateWorkload(weekStart, deserialize(schedule.getScheduleJson()));
+        return domainService.calculateWorkload(weekStart, schedule.getStudyBlocks().stream().map(this::toDto).toList());
     }
 
     @Override
     public List<ScheduleResponse> getAdherenceHistory(String username) {
         return scheduleRepository.findByUserUsernameOrderByWeekStartDesc(username)
                 .stream()
-                .map(s -> mapToResponse(s, deserialize(s.getScheduleJson())))
+                .map(this::mapToResponse)
                 .toList();
     }
 
-    private String serialize(List<StudyBlockDto> blocks) {
-        try {
-            return OBJECT_MAPPER.writeValueAsString(blocks);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException("Failed to serialize schedule blocks", e);
-        }
+    @Override
+    @Transactional
+    public ScheduleResponse updateStudyBlock(String username, Long blockId, UpdateStudyBlockRequest request) {
+        StudyBlock block = studyBlockRepository.findByIdAndSchedule_User_Username(blockId, username)
+                .orElseThrow(() -> new RuntimeException("Study block not found"));
+        if (request.getDay() != null) block.setDay(request.getDay());
+        if (request.getStartTime() != null) block.setStartTime(request.getStartTime());
+        if (request.getEndTime() != null) block.setEndTime(request.getEndTime());
+        studyBlockRepository.save(block);
+        return mapToResponse(block.getSchedule());
     }
 
-    private List<StudyBlockDto> deserialize(String json) {
-        try {
-            return OBJECT_MAPPER.readValue(json, new TypeReference<List<StudyBlockDto>>() {});
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException("Failed to deserialize schedule blocks", e);
-        }
+    @Override
+    @Transactional
+    public ScheduleResponse deleteStudyBlock(String username, Long blockId) {
+        StudyBlock block = studyBlockRepository.findByIdAndSchedule_User_Username(blockId, username)
+                .orElseThrow(() -> new RuntimeException("Study block not found"));
+        Schedule schedule = block.getSchedule();
+        schedule.getStudyBlocks().remove(block);
+        scheduleRepository.save(schedule);
+        return mapToResponse(schedule);
     }
 
-    private ScheduleResponse mapToResponse(Schedule schedule, List<StudyBlockDto> blocks) {
+    private StudyBlock toEntity(StudyBlockDto dto, Schedule schedule) {
+        StudyBlock block = new StudyBlock();
+        block.setSchedule(schedule);
+        block.setDay(dto.getDay());
+        block.setStartTime(dto.getStartTime());
+        block.setEndTime(dto.getEndTime());
+        block.setDeadlineId(dto.getDeadlineId());
+        block.setCourseName(dto.getCourseName());
+        block.setDeadlineTitle(dto.getDeadlineTitle());
+        block.setAllocatedMinutes(dto.getAllocatedMinutes());
+        block.setPriority(dto.getPriority());
+        return block;
+    }
+
+    private StudyBlockDto toDto(StudyBlock block) {
+        StudyBlockDto dto = new StudyBlockDto();
+        dto.setId(block.getId());
+        dto.setDay(block.getDay());
+        dto.setStartTime(block.getStartTime());
+        dto.setEndTime(block.getEndTime());
+        dto.setDeadlineId(block.getDeadlineId());
+        dto.setCourseName(block.getCourseName());
+        dto.setDeadlineTitle(block.getDeadlineTitle());
+        dto.setAllocatedMinutes(block.getAllocatedMinutes());
+        dto.setPriority(block.getPriority());
+        return dto;
+    }
+
+    private ScheduleResponse mapToResponse(Schedule schedule) {
         ScheduleResponse response = new ScheduleResponse();
         response.setId(schedule.getId());
         response.setWeekStart(schedule.getWeekStart());
-        response.setStudyBlocks(blocks);
+        response.setStudyBlocks(schedule.getStudyBlocks().stream().map(this::toDto).toList());
         response.setWasFollowed(schedule.getWasFollowed());
         response.setAdherencePercentage(schedule.getAdherencePercentage());
         response.setGeneratedAt(schedule.getGeneratedAt());

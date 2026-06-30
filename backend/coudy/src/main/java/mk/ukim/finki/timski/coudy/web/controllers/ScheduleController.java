@@ -67,6 +67,21 @@ public class ScheduleController {
         return ResponseEntity.ok(scheduleApplicationService.getAdherenceHistory(getUsername(user)));
     }
 
+    @PatchMapping("/blocks/{blockId}")
+    public ResponseEntity<ScheduleResponse> updateBlock(
+            @AuthenticationPrincipal UserDetails user,
+            @PathVariable Long blockId,
+            @RequestBody UpdateStudyBlockRequest request) {
+        return ResponseEntity.ok(scheduleApplicationService.updateStudyBlock(getUsername(user), blockId, request));
+    }
+
+    @DeleteMapping("/blocks/{blockId}")
+    public ResponseEntity<ScheduleResponse> deleteBlock(
+            @AuthenticationPrincipal UserDetails user,
+            @PathVariable Long blockId) {
+        return ResponseEntity.ok(scheduleApplicationService.deleteStudyBlock(getUsername(user), blockId));
+    }
+
     private String getUsername(UserDetails userDetails) {
         if (userDetails instanceof User) {
             return ((User) userDetails).getUsername();

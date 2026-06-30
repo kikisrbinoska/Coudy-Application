@@ -75,6 +75,16 @@ const Schedule = () => {
     onError: () => toast({ title: "Failed to regenerate", variant: "destructive" }),
   });
 
+  const deleteBlockMutation = useMutation({
+    mutationFn: (blockId: number) => scheduleApi.deleteBlock(blockId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["schedule", weekStart] });
+      queryClient.invalidateQueries({ queryKey: ["workload", weekStart] });
+      toast({ title: "Study block removed" });
+    },
+    onError: () => toast({ title: "Failed to remove study block", variant: "destructive" }),
+  });
+
   const addSlot = () =>
     setSlots([...slots, { day: "MONDAY", start_time: "09:00:00", end_time: "12:00:00" }]);
 
@@ -228,9 +238,9 @@ const Schedule = () => {
                     </span>
                   </div>
                   <div className="space-y-2">
-                    {blocks.map((block, i) => (
+                    {blocks.map((block) => (
                       <div
-                        key={i}
+                        key={block.id}
                         className={`${PRIORITY_GRADIENT[block.priority] ?? "bg-gradient-to-br from-primary to-secondary"} p-3 rounded-xl text-white shadow-md`}
                       >
                         <div className="flex justify-between items-start">
@@ -248,6 +258,15 @@ const Schedule = () => {
                             <span className="text-xs bg-white/20 px-2 py-1 rounded">
                               {block.priority}
                             </span>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-6 w-6 text-white/80 hover:text-white hover:bg-white/20"
+                              onClick={() => deleteBlockMutation.mutate(block.id)}
+                              disabled={deleteBlockMutation.isPending}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
                           </div>
                         </div>
                       </div>
