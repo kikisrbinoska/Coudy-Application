@@ -68,23 +68,27 @@ public class JwtSecurityWebConfig {
                                 "/webjars/**",
                                 "/api-docs/**",
 
+                                // Error dispatch — must be permitAll so exceptions never
+                                // cause a secondary 403 that logs the user out
+                                "/error",
+
                                 // Public API endpoints
                                 "/api/user/register",
                                 "/api/user/login",
                                 "/api/user/logout",
 
-                                // Quiz endpoints (public for testing)
-                                "/api/quiz/**"
+                                // Quiz endpoints
+                                "/api/quiz/**",
+
+                                // Game sessions
+                                "/api/game-sessions/**"
                         ).permitAll()
 
                         // ============================================
                         // USER & ADMIN PATHS
                         // ============================================
-                        .requestMatchers("/api/game-sessions/**").permitAll()
-
-                        .requestMatchers("/api/**", "/error")
+                        .requestMatchers("/api/**")
                         .hasAnyRole("USER", "ADMIN")
-                        .requestMatchers("/api/quiz/**").permitAll()
 
 
 

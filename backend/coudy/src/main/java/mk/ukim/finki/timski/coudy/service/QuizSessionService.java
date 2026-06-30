@@ -94,6 +94,19 @@ public class QuizSessionService {
             return existing;
         }
 
-        return generatorService.generateQuestionsForTopic(topic.getId(), count);
+        try {
+            return generatorService.generateQuestionsForTopic(topic.getId(), count);
+        } catch (Exception e) {
+            System.err.println("[QuizSessionService] AI generation failed for topic '"
+                    + topic.getTopic() + "': " + e.getMessage() + ". Trying fallback generator.");
+            List<QuizQuestion> fallback = generatorService.generateFallbackQuestions(topic, count);
+            if (!fallback.isEmpty()) {
+                System.out.println("[QuizSessionService] Fallback generated " + fallback.size()
+                        + " questions for topic '" + topic.getTopic() + "'.");
+                return fallback;
+            }
+            throw new RuntimeException("No questions could be generated for topic '" + topic.getTopic()
+                    + "'. Please ensure course content (slides) has been uploaded.");
+        }
     }
 }

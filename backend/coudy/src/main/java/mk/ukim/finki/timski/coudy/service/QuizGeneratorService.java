@@ -18,6 +18,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -110,6 +111,109 @@ public class QuizGeneratorService {
             
             Pure JSON only, no markdown, no extra text.
             """, count, topic, content);
+    }
+
+    public List<QuizQuestion> generateFallbackQuestions(QuizTopic topic, int count) {
+        List<SlideContent> slides = deserializeSlides(topic.getSlidesJson());
+
+        // Prefer slides with meaningful (non-Macedonian-header) titles
+        List<SlideContent> goodSlides = slides.stream()
+                .filter(s -> hasMeaningfulTitle(s.getTitle())
+                          && s.getContent() != null && !s.getContent().isBlank())
+                .collect(Collectors.toList());
+
+        if (goodSlides.size() < 2) {
+            goodSlides = slides.stream()
+                    .filter(s -> s.getContent() != null && cleanSlideContent(s.getContent()).length() > 30)
+                    .collect(Collectors.toList());
+        }
+
+        if (goodSlides.size() < 2) return new ArrayList<>();
+
+        List<String> allLabels = goodSlides.stream()
+                .map(s -> hasMeaningfulTitle(s.getTitle())
+                        ? s.getTitle().replace("\t", " ").trim()
+                        : extractFirstConcept(s.getContent()))
+                .filter(l -> !l.isBlank())
+                .distinct()
+                .collect(Collectors.toList());
+
+        if (allLabels.size() < 2) return new ArrayList<>();
+
+        Collections.shuffle(goodSlides);
+        List<QuizQuestion> questions = new ArrayList<>();
+
+        for (SlideContent slide : goodSlides) {
+            if (questions.size() >= count) break;
+
+            String concept = hasMeaningfulTitle(slide.getTitle())
+                    ? slide.getTitle().replace("\t", " ").trim()
+                    : extractFirstConcept(slide.getContent());
+            if (concept.isBlank()) continue;
+
+            String snippet = extractSnippet(slide.getContent(), 120);
+            if (snippet.isBlank()) continue;
+
+            List<String> wrongs = allLabels.stream()
+                    .filter(l -> !l.equals(concept))
+                    .limit(3)
+                    .collect(Collectors.toList());
+            while (wrongs.size() < 3) wrongs.add("None of the above");
+
+            List<String> options = new ArrayList<>(wrongs.subList(0, 3));
+            options.add(concept);
+            Collections.shuffle(options);
+            int correctIdx = options.indexOf(concept);
+
+            QuizQuestion q = new QuizQuestion();
+            q.setId(UUID.randomUUID().toString());
+            q.setQuestion("Which concept in the \"" + topic.getTopic()
+                    + "\" material is described as: \"" + snippet + "\"?");
+            q.setOptions(options);
+            q.setCorrectIndex(correctIdx);
+            q.setExplanation("\"" + concept + "\" is described in the course slides as: " + snippet);
+            questions.add(q);
+        }
+
+        return questions;
+    }
+
+    private boolean hasMeaningfulTitle(String title) {
+        if (title == null || title.length() < 3) return false;
+        String upper = title.toUpperCase();
+        return !upper.contains("ФАКУЛТЕТ")
+                && !upper.contains("КОМПЈУТЕРСКО")
+                && !upper.contains("ИНФОРМАТИЧКИ")
+                && !upper.contains("ФИНКИ")
+                && !title.trim().matches("\\d+");
+    }
+
+    private String extractFirstConcept(String content) {
+        String clean = cleanSlideContent(content);
+        String[] parts = clean.split("[◼●•\\.\\n]", 2);
+        String first = parts[0].trim();
+        if (first.length() < 3) return "";
+        return first.length() <= 60 ? first : first.substring(0, 55).trim() + "...";
+    }
+
+    private String cleanSlideContent(String content) {
+        if (content == null) return "";
+        return content
+                .replaceAll("И КОМПЈУТЕРСКО ИНЖЕНЕРСТВО( ФИНКИ)?", "")
+                .replaceAll("ФАКУЛТЕТ ЗА ИНФОРМАТИЧКИ НАУКИ( И КОМПЈУТЕРСКО ИНЖЕНЕРСТВО)?( ФИНКИ)?", "")
+                .replaceAll("Copyright © \\d{4} [^.]+\\.", "")
+                .replaceAll("\\s{2,}", " ")
+                .trim();
+    }
+
+    private String extractSnippet(String content, int maxLen) {
+        String clean = cleanSlideContent(content);
+        clean = clean.replaceAll("^[◼●•\\s]+", "").trim();
+        if (clean.length() > maxLen) {
+            int cut = clean.lastIndexOf(' ', maxLen);
+            return (cut > 50 ? clean.substring(0, cut) : clean.substring(0, maxLen)).trim() + "...";
+        }
+        return clean;
     }
 
     private List<QuizQuestion> callClaudeAPI(String prompt) {

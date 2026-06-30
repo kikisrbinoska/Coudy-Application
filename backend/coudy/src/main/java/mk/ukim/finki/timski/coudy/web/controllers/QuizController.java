@@ -9,6 +9,7 @@ import mk.ukim.finki.timski.coudy.repository.QuizSessionRepository;
 import mk.ukim.finki.timski.coudy.repository.QuizTopicRepository;
 import mk.ukim.finki.timski.coudy.service.QuizSessionService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -48,5 +49,11 @@ public class QuizController {
     @PostMapping("/submit")
     public QuizResult submitAnswers(@RequestBody QuizSubmitRequest req) {
         return sessionService.evaluateSession(req);
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<String> handleQuizError(Exception ex) {
+        System.err.println("[QuizController] Error: " + ex.getMessage());
+        return ResponseEntity.internalServerError().body(ex.getMessage());
     }
 }
