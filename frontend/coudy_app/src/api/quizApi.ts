@@ -37,9 +37,17 @@ export interface QuizResult {
   question_results: QuestionResult[];
 }
 
+export interface CourseStat {
+  course: string;
+  completed_sessions: number;
+}
+
 const quizApi = {
   getCourses: () =>
     axiosInstance.get<string[]>("/quiz/courses").then((r) => r.data),
+
+  getCourseStats: () =>
+    axiosInstance.get<CourseStat[]>("/quiz/courses/stats").then((r) => r.data),
 
   getTopics: (course: string) =>
     axiosInstance.get<string[]>(`/quiz/courses/${encodeURIComponent(course)}/topics`).then((r) => r.data),

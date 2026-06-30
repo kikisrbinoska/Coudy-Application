@@ -4,7 +4,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { TrendingUp, Clock, BookOpen, Target } from "lucide-react";
 import focusApi, { FocusStatsDto } from "@/api/focusApi";
 import habitApi, { WeeklySummary } from "@/api/habitApi";
-import quizApi from "@/api/quizApi";
+import quizApi, { CourseStat } from "@/api/quizApi";
 
 const SUBJECT_COLORS = [
   "hsl(330 70% 75%)",
@@ -17,12 +17,12 @@ const SUBJECT_COLORS = [
 const ProductivityInsights = () => {
   const [focusStats, setFocusStats] = useState<FocusStatsDto>({ total_sessions: 0, total_minutes: 0, total_points_earned: 0 });
   const [weeklyHabits, setWeeklyHabits] = useState<WeeklySummary[]>([]);
-  const [quizCourses, setQuizCourses] = useState<string[]>([]);
+  const [courseStats, setCourseStats] = useState<CourseStat[]>([]);
 
   useEffect(() => {
     focusApi.getStats().then(setFocusStats).catch(() => {});
     habitApi.getWeeklySummary().then(setWeeklyHabits).catch(() => {});
-    quizApi.getCourses().then(setQuizCourses).catch(() => {});
+    quizApi.getCourseStats().then(setCourseStats).catch(() => {});
   }, []);
 
   const avgSessionHours = focusStats.total_sessions > 0
@@ -37,10 +37,12 @@ const ProductivityInsights = () => {
         { day: "Thu", hours: 0 }, { day: "Fri", hours: 0 }, { day: "Sat", hours: 0 }, { day: "Sun", hours: 0 },
       ];
 
-  // Subject distribution from quiz courses — equal slice per course for now
-  const subjectData = quizCourses.slice(0, 5).map((name, i) => ({
-    name,
-    value: Math.round(100 / Math.min(quizCourses.length, 5)),
+  // Subject distribution from real completed quiz session counts per course
+  const totalCompletedSessions = courseStats.reduce((sum, c) => sum + c.completed_sessions, 0);
+  const sortedCourseStats = [...courseStats].sort((a, b) => b.completed_sessions - a.completed_sessions);
+  const subjectData = sortedCourseStats.slice(0, 5).map((c, i) => ({
+    name: c.course,
+    value: totalCompletedSessions > 0 ? Math.round((c.completed_sessions / totalCompletedSessions) * 100) : 0,
     color: SUBJECT_COLORS[i % SUBJECT_COLORS.length],
   }));
 
