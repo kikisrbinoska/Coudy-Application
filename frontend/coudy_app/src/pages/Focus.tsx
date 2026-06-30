@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useTheme } from "next-themes";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -78,27 +79,14 @@ const Focus = () => {
   const [musicLoading, setMusicLoading] = useState(false);
 
   const [initialLoading, setInitialLoading] = useState(true);
-  const [isDark, setIsDark] = useState(
-    document.documentElement.classList.contains("dark")
-  );
 
   const audioRef = useRef<HTMLAudioElement>(null);
   const { toast } = useToast();
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
 
   const bgIndex = themeIndex(settings.backgroundTheme);
   const background = isDark ? DARK_BACKGROUNDS[bgIndex] : BACKGROUNDS[bgIndex];
-
-  // Reactive dark mode detection
-  useEffect(() => {
-    const observer = new MutationObserver(() => {
-      setIsDark(document.documentElement.classList.contains("dark"));
-    });
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ["class"],
-    });
-    return () => observer.disconnect();
-  }, []);
 
   const loadAll = useCallback(async () => {
     try {
@@ -304,14 +292,7 @@ const Focus = () => {
         <Card className="glass-card p-12 border-0 text-center">
           <div
             className="text-8xl md:text-9xl font-bold mb-8 tracking-tight"
-            style={{
-              background: isDark
-                ? "linear-gradient(135deg, hsl(330,65%,72%), hsl(264,40%,60%))"
-                : "linear-gradient(135deg, hsl(330,80%,42%), hsl(210,80%,42%))",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              backgroundClip: "text",
-            }}
+            style={{ color: isDark ? "hsl(330,55%,72%)" : "hsl(330,70%,40%)" }}
           >
             {formatTime(time)}
           </div>
@@ -361,14 +342,7 @@ const Focus = () => {
             <p className="text-sm text-muted-foreground mb-2">Your Points</p>
             <p
               className="text-4xl font-bold"
-              style={{
-                background: isDark
-                  ? "linear-gradient(135deg, hsl(38,80%,68%), hsl(330,60%,68%))"
-                  : "linear-gradient(135deg, hsl(35,90%,38%), hsl(330,80%,42%))",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                backgroundClip: "text",
-              }}
+              style={{ color: isDark ? "hsl(38,75%,68%)" : "hsl(35,85%,38%)" }}
             >
               {totalPoints} SP
             </p>
