@@ -35,9 +35,9 @@ const Schedule = () => {
   const weekStart = getMonday(new Date());
 
   const [slots, setSlots] = useState<TimeSlot[]>([
-    { day: "MONDAY", startTime: "09:00:00", endTime: "12:00:00" },
-    { day: "WEDNESDAY", startTime: "10:00:00", endTime: "13:00:00" },
-    { day: "FRIDAY", startTime: "14:00:00", endTime: "17:00:00" },
+    { day: "MONDAY", start_time: "09:00:00", end_time: "12:00:00" },
+    { day: "WEDNESDAY", start_time: "10:00:00", end_time: "13:00:00" },
+    { day: "FRIDAY", start_time: "14:00:00", end_time: "17:00:00" },
   ]);
 
   const { data: schedule, isLoading } = useQuery({
@@ -56,7 +56,7 @@ const Schedule = () => {
   });
 
   const generateMutation = useMutation({
-    mutationFn: () => scheduleApi.generate({ weekStart, availableSlots: slots }),
+    mutationFn: () => scheduleApi.generate({ week_start: weekStart, available_slots: slots }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["schedule", weekStart] });
       queryClient.invalidateQueries({ queryKey: ["workload", weekStart] });
@@ -66,7 +66,7 @@ const Schedule = () => {
   });
 
   const regenerateMutation = useMutation({
-    mutationFn: () => scheduleApi.regenerate({ weekStart, availableSlots: slots }),
+    mutationFn: () => scheduleApi.regenerate({ week_start: weekStart, available_slots: slots }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["schedule", weekStart] });
       queryClient.invalidateQueries({ queryKey: ["workload", weekStart] });
@@ -76,7 +76,7 @@ const Schedule = () => {
   });
 
   const addSlot = () =>
-    setSlots([...slots, { day: "MONDAY", startTime: "09:00:00", endTime: "12:00:00" }]);
+    setSlots([...slots, { day: "MONDAY", start_time: "09:00:00", end_time: "12:00:00" }]);
 
   const removeSlot = (i: number) => setSlots(slots.filter((_, idx) => idx !== i));
 
@@ -84,7 +84,7 @@ const Schedule = () => {
     setSlots(slots.map((s, idx) => (idx === i ? { ...s, [field]: value } : s)));
 
   const blocksByDay = DAYS.reduce<Record<string, StudyBlock[]>>((acc, day) => {
-    acc[day] = schedule?.studyBlocks.filter((b) => b.day === day) ?? [];
+    acc[day] = schedule?.study_blocks.filter((b) => b.day === day) ?? [];
     return acc;
   }, {});
 
@@ -108,16 +108,16 @@ const Schedule = () => {
       {workload && (
         <div className="grid grid-cols-3 gap-3">
           <Card className="glass-card p-4 border-0 text-center">
-            <p className="text-2xl font-bold text-primary">{(workload.totalStudyMinutes / 60).toFixed(1)}h</p>
+            <p className="text-2xl font-bold text-primary">{(workload.total_study_minutes / 60).toFixed(1)}h</p>
             <p className="text-xs text-muted-foreground">Total study</p>
           </Card>
           <Card className="glass-card p-4 border-0 text-center">
-            <p className="text-2xl font-bold text-secondary">{workload.totalDeadlines}</p>
+            <p className="text-2xl font-bold text-secondary">{workload.total_deadlines}</p>
             <p className="text-xs text-muted-foreground">Deadlines</p>
           </Card>
           <Card className="glass-card p-4 border-0 text-center">
-            <p className={`text-2xl font-bold ${workload.overallPressure === "HEAVY" ? "text-destructive" : workload.overallPressure === "MODERATE" ? "text-accent" : "text-primary"}`}>
-              {workload.overallPressure}
+            <p className={`text-2xl font-bold ${workload.overall_pressure === "HEAVY" ? "text-destructive" : workload.overall_pressure === "MODERATE" ? "text-accent" : "text-primary"}`}>
+              {workload.overall_pressure}
             </p>
             <p className="text-xs text-muted-foreground">Workload</p>
           </Card>
@@ -150,7 +150,7 @@ const Schedule = () => {
                 </SelectContent>
               </Select>
 
-              <Select value={slot.startTime} onValueChange={(v) => updateSlot(i, "startTime", v)}>
+              <Select value={slot.start_time} onValueChange={(v) => updateSlot(i, "start_time", v)}>
                 <SelectTrigger className="w-28 bg-background/50">
                   <SelectValue />
                 </SelectTrigger>
@@ -161,7 +161,7 @@ const Schedule = () => {
 
               <span className="text-muted-foreground text-sm">to</span>
 
-              <Select value={slot.endTime} onValueChange={(v) => updateSlot(i, "endTime", v)}>
+              <Select value={slot.end_time} onValueChange={(v) => updateSlot(i, "end_time", v)}>
                 <SelectTrigger className="w-28 bg-background/50">
                   <SelectValue />
                 </SelectTrigger>
@@ -218,7 +218,7 @@ const Schedule = () => {
           <div className="space-y-4">
             {activeDays.map((day) => {
               const blocks = blocksByDay[day];
-              const totalMinutes = blocks.reduce((s, b) => s + b.allocatedMinutes, 0);
+              const totalMinutes = blocks.reduce((s, b) => s + b.allocated_minutes, 0);
               return (
                 <div key={day} className="glass p-4 rounded-2xl">
                   <div className="flex justify-between items-center mb-3">
@@ -235,15 +235,15 @@ const Schedule = () => {
                       >
                         <div className="flex justify-between items-start">
                           <div>
-                            <p className="font-semibold">{block.deadlineTitle}</p>
-                            <p className="text-xs opacity-75">{block.courseName}</p>
+                            <p className="font-semibold">{block.deadline_title}</p>
+                            <p className="text-xs opacity-75">{block.course_name}</p>
                             <p className="text-xs opacity-90 mt-1">
-                              {block.startTime.slice(0, 5)} – {block.endTime.slice(0, 5)}
+                              {block.start_time.slice(0, 5)} – {block.end_time.slice(0, 5)}
                             </p>
                           </div>
                           <div className="flex flex-col items-end gap-1">
                             <span className="text-xs bg-white/20 px-2 py-1 rounded">
-                              {(block.allocatedMinutes / 60).toFixed(1)}h
+                              {(block.allocated_minutes / 60).toFixed(1)}h
                             </span>
                             <span className="text-xs bg-white/20 px-2 py-1 rounded">
                               {block.priority}

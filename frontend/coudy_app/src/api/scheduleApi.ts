@@ -2,41 +2,41 @@ import axiosInstance from "./axios";
 
 export interface TimeSlot {
   day: string;
-  startTime: string;
-  endTime: string;
+  start_time: string;
+  end_time: string;
 }
 
 export interface StudyBlock {
   day: string;
-  startTime: string;
-  endTime: string;
-  deadlineId: number;
-  courseName: string;
-  deadlineTitle: string;
-  allocatedMinutes: number;
+  start_time: string;
+  end_time: string;
+  deadline_id: number;
+  course_name: string;
+  deadline_title: string;
+  allocated_minutes: number;
   priority: "HIGH" | "MEDIUM" | "LOW";
 }
 
 export interface ScheduleResponse {
   id: number;
-  weekStart: string;
-  studyBlocks: StudyBlock[];
-  wasFollowed: boolean | null;
-  adherencePercentage: number | null;
-  generatedAt: string;
+  week_start: string;
+  study_blocks: StudyBlock[];
+  was_followed: boolean | null;
+  adherence_percentage: number | null;
+  generated_at: string;
 }
 
 export interface GenerateScheduleRequest {
-  weekStart: string;
-  availableSlots: TimeSlot[];
+  week_start: string;
+  available_slots: TimeSlot[];
 }
 
 export interface WeeklyWorkload {
-  weekStart: string;
-  totalStudyMinutes: number;
-  totalDeadlines: number;
-  minutesPerCourse: Record<string, number>;
-  overallPressure: string;
+  week_start: string;
+  total_study_minutes: number;
+  total_deadlines: number;
+  minutes_per_course: Record<string, number>;
+  overall_pressure: string;
 }
 
 const scheduleApi = {
@@ -57,7 +57,7 @@ const scheduleApi = {
 
   updateAdherence: (scheduleId: number, wasFollowed: boolean, adherencePercentage: number) =>
     axiosInstance
-      .patch<ScheduleResponse>(`/schedules/${scheduleId}/adherence`, { wasFollowed, adherencePercentage })
+      .patch<ScheduleResponse>(`/schedules/${scheduleId}/adherence`, { was_followed: wasFollowed, adherence_percentage: adherencePercentage })
       .then((r) => r.data),
 };
 

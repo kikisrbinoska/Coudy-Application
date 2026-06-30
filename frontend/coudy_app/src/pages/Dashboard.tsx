@@ -11,7 +11,7 @@ import habitApi, { HabitDto } from "@/api/habitApi";
 import deadlineApi, { Deadline } from "@/api/deadlineApi";
 import gameApi, { GameDto } from "@/api/gameApi";
 import focusApi, { FocusStatsDto } from "@/api/focusApi";
-import quizApi from "@/api/quizApi";
+import quizApi, { CourseStat } from "@/api/quizApi";
 import courseApi from "@/api/courseApi";
 
 const SP_PER_LEVEL = 500;
@@ -29,6 +29,7 @@ const Dashboard = () => {
   const [focusStats, setFocusStats] = useState<FocusStatsDto>({ total_sessions: 0, total_minutes: 0, total_points_earned: 0 });
   const [weeklyHabits, setWeeklyHabits] = useState<{ day: string; completed: number }[]>([]);
   const [quizCourses, setQuizCourses] = useState<string[]>([]);
+  const [courseStats, setCourseStats] = useState<CourseStat[]>([]);
   const [courses, setCourses] = useState<{ id: number; name?: string; code?: string }[]>([]);
 
   // Study timer (mirrors Focus page)
@@ -48,6 +49,7 @@ const Dashboard = () => {
       focusApi.getPoints().then(setSyncPoints),
       focusApi.getStats().then(setFocusStats),
       quizApi.getCourses().then(setQuizCourses),
+      quizApi.getCourseStats().then(setCourseStats),
       courseApi.getAll().then(setCourses),
     ]);
   }, []);
@@ -151,9 +153,10 @@ const Dashboard = () => {
     ? Math.round(focusStats.total_minutes / focusStats.total_sessions)
     : 0;
 
-  // Subject distribution: courses with quiz activity
-  const maxQuizCount = Math.max(quizCourses.length, 1);
+  // Subject distribution: real completed quiz session counts per course
   const subjectColors = ["bg-primary", "bg-secondary", "bg-accent", "bg-destructive", "bg-muted"];
+  const totalCompletedSessions = courseStats.reduce((sum, c) => sum + c.completed_sessions, 0);
+  const sortedCourseStats = [...courseStats].sort((a, b) => b.completed_sessions - a.completed_sessions);
 
   // Weekly habit activity bar chart
   const maxHabitDay = Math.max(...weeklyHabits.map((d) => d.completed), 1);
@@ -351,17 +354,19 @@ const Dashboard = () => {
               <BookOpen className="w-5 h-5 text-accent" />
               Subject Distribution
             </h2>
-            {quizCourses.length === 0 && courses.length === 0 ? (
+            {sortedCourseStats.length === 0 && courses.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">Take quizzes to see your subject activity.</p>
             ) : (
               <div className="space-y-3">
-                {quizCourses.slice(0, 5).map((course, i) => {
-                  const pct = Math.round(((i + 1) / maxQuizCount) * 80 + 20);
+                {sortedCourseStats.slice(0, 5).map((stat, i) => {
+                  const pct = totalCompletedSessions > 0
+                    ? Math.round((stat.completed_sessions / totalCompletedSessions) * 100)
+                    : 0;
                   return (
-                    <div key={course}>
+                    <div key={stat.course}>
                       <div className="flex justify-between text-sm mb-1">
-                        <span className="text-muted-foreground truncate max-w-[140px]">{course}</span>
-                        <span className="text-xs font-medium text-primary">Quiz active</span>
+                        <span className="text-muted-foreground truncate max-w-[140px]">{stat.course}</span>
+                        <span className="text-xs font-medium text-primary">{pct}% ({stat.completed_sessions})</span>
                       </div>
                       <div className="w-full bg-muted rounded-full h-2">
                         <div className={`${subjectColors[i % subjectColors.length]} h-2 rounded-full`} style={{ width: `${pct}%` }} />
@@ -369,14 +374,14 @@ const Dashboard = () => {
                     </div>
                   );
                 })}
-                {courses.filter((c) => !quizCourses.includes(c.name ?? "")).slice(0, 3).map((c, i) => (
+                {courses.filter((c) => !sortedCourseStats.some((s) => s.course === c.name)).slice(0, 3).map((c) => (
                   <div key={c.id}>
                     <div className="flex justify-between text-sm mb-1">
                       <span className="text-muted-foreground truncate max-w-[140px]">{c.code ? `${c.code} - ${c.name}` : c.name}</span>
-                      <span className="text-xs text-muted-foreground">Enrolled</span>
+                      <span className="text-xs text-muted-foreground">No quizzes yet</span>
                     </div>
                     <div className="w-full bg-muted rounded-full h-2">
-                      <div className="bg-muted-foreground/30 h-2 rounded-full" style={{ width: "20%" }} />
+                      <div className="bg-muted-foreground/30 h-2 rounded-full" style={{ width: "0%" }} />
                     </div>
                   </div>
                 ))}

@@ -56,7 +56,7 @@ const StudyTimetable = () => {
   }
 
   const blocksByDay = DAYS.reduce<Record<string, StudyBlock[]>>((acc, day) => {
-    acc[day] = schedule.studyBlocks.filter((b) => b.day === day);
+    acc[day] = schedule.study_blocks.filter((b) => b.day === day);
     return acc;
   }, {});
 
@@ -73,7 +73,7 @@ const StudyTimetable = () => {
       <div className="space-y-4">
         {activeDays.map((day) => {
           const blocks = blocksByDay[day];
-          const totalMinutes = blocks.reduce((s, b) => s + b.allocatedMinutes, 0);
+          const totalMinutes = blocks.reduce((s, b) => s + b.allocated_minutes, 0);
           const totalHours = (totalMinutes / 60).toFixed(1);
 
           return (
@@ -90,15 +90,15 @@ const StudyTimetable = () => {
                   >
                     <div className="flex justify-between items-start">
                       <div>
-                        <p className="font-semibold">{block.deadlineTitle}</p>
-                        <p className="text-xs opacity-75">{block.courseName}</p>
+                        <p className="font-semibold">{block.deadline_title}</p>
+                        <p className="text-xs opacity-75">{block.course_name}</p>
                         <p className="text-xs opacity-90 mt-1">
-                          {block.startTime.slice(0, 5)} – {block.endTime.slice(0, 5)}
+                          {block.start_time.slice(0, 5)} – {block.end_time.slice(0, 5)}
                         </p>
                       </div>
                       <div className="flex flex-col items-end gap-1">
                         <span className="text-xs bg-white/20 px-2 py-1 rounded">
-                          {(block.allocatedMinutes / 60).toFixed(1)}h
+                          {(block.allocated_minutes / 60).toFixed(1)}h
                         </span>
                         <span className="text-xs bg-white/20 px-2 py-1 rounded">
                           {block.priority}

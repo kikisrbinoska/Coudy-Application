@@ -41,6 +41,12 @@ const CATEGORY_COLORS: Record<HabitCategory, string> = {
 
 const DEFAULT_ICON = "⭐";
 
+const ICON_OPTIONS = [
+  "⭐", "📚", "💪", "🏃", "🧘", "💧", "🥗", "😴",
+  "✍️", "🎯", "🧠", "🎨", "🎵", "💻", "📖", "🌅",
+  "🦷", "🚭", "💊", "🙏", "📝", "☀️", "🌙", "🔥",
+];
+
 const Habits = () => {
   const [habits, setHabits] = useState<HabitDto[]>([]);
   const [weekData, setWeekData] = useState<WeeklySummary[]>([]);
@@ -166,9 +172,24 @@ const Habits = () => {
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label>Icon (emoji)</Label>
+                    <Label>Icon</Label>
+                    <div className="grid grid-cols-8 gap-2">
+                      {ICON_OPTIONS.map((emoji) => (
+                        <button
+                          key={emoji}
+                          type="button"
+                          onClick={() => setForm((f) => ({ ...f, icon: emoji }))}
+                          className={`text-2xl p-2 rounded-xl transition-all hover:scale-110 hover:bg-primary/10 ${
+                            form.icon === emoji ? "bg-primary/20 ring-2 ring-primary" : "glass"
+                          }`}
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
                     <Input
-                      placeholder="📚"
+                      className="mt-2"
+                      placeholder="Or type your own emoji"
                       value={form.icon}
                       onChange={(e) => setForm((f) => ({ ...f, icon: e.target.value }))}
                     />
@@ -316,16 +337,23 @@ const Habits = () => {
                     </div>
                     <div className="flex gap-2">
                       <Button
-                        size="sm"
+                        size="default"
                         variant={habit.completed_today ? "default" : "outline"}
-                        className={habit.completed_today ? "gradient-accent border-0" : "glass"}
+                        className={
+                          habit.completed_today
+                            ? "gradient-accent border-0 font-semibold shadow-md"
+                            : "border-2 border-primary text-primary font-semibold hover:bg-primary hover:text-primary-foreground shadow-md"
+                        }
                         onClick={() => !habit.completed_today && handleComplete(habit.id)}
                         disabled={habit.completed_today || completingId === habit.id}
                       >
                         {completingId === habit.id ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
                         ) : habit.completed_today ? (
-                          "✓ Done"
+                          <>
+                            <CheckCircle2 className="w-4 h-4 mr-1" />
+                            Done
+                          </>
                         ) : (
                           "Complete"
                         )}

@@ -34,6 +34,10 @@ public class ScheduleApplicationServiceImpl implements ScheduleApplicationServic
 
     @Override
     public ScheduleResponse generateWeeklySchedule(String username, GenerateScheduleRequest request) {
+        if (request.getWeekStart() == null) {
+            throw new IllegalArgumentException("weekStart is required");
+        }
+
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
