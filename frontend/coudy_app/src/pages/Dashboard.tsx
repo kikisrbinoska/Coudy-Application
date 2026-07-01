@@ -4,7 +4,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Users, Target, Trophy, Flame, Award, Clock, Gamepad2, ChevronLeft, ChevronRight, Play, Pause, Square, BookOpen, TrendingUp, BarChart2 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useState, useEffect, useRef, useCallback } from "react";
 import habitApi, { HabitDto } from "@/api/habitApi";
@@ -13,12 +13,25 @@ import gameApi, { GameDto } from "@/api/gameApi";
 import focusApi, { FocusStatsDto } from "@/api/focusApi";
 import quizApi, { CourseStat } from "@/api/quizApi";
 import courseApi from "@/api/courseApi";
+import studyBuddyApi, { StudyBuddyCard } from "@/api/studyBuddyApi";
 
 const SP_PER_LEVEL = 500;
 const calcLevel = (sp: number) => Math.max(1, Math.floor(sp / SP_PER_LEVEL) + 1);
 
+const buddyInitials = (name?: string, surname?: string, username?: string) => {
+  const source = name || surname ? `${name ?? ""} ${surname ?? ""}` : username ?? "";
+  return source
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase() || "SB";
+};
+
 const Dashboard = () => {
   const { user: authUser } = useAuth();
+  const navigate = useNavigate();
 
   // Core data
   const [todayHabits, setTodayHabits] = useState<HabitDto[]>([]);
@@ -31,6 +44,7 @@ const Dashboard = () => {
   const [quizCourses, setQuizCourses] = useState<string[]>([]);
   const [courseStats, setCourseStats] = useState<CourseStat[]>([]);
   const [courses, setCourses] = useState<{ id: number; name?: string; code?: string }[]>([]);
+  const [studyBuddies, setStudyBuddies] = useState<StudyBuddyCard[]>([]);
 
   // Study timer (mirrors Focus page)
   const [time, setTime] = useState(0);
@@ -51,6 +65,7 @@ const Dashboard = () => {
       quizApi.getCourses().then(setQuizCourses),
       quizApi.getCourseStats().then(setCourseStats),
       courseApi.getAll().then(setCourses),
+      studyBuddyApi.mine().then(setStudyBuddies),
     ]);
   }, []);
 
@@ -443,25 +458,39 @@ const Dashboard = () => {
               {upcomingDeadlines.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">No upcoming deadlines.</p>
               ) : (
-                upcomingDeadlines.slice(0, 3).map((deadline) => (
+                upcomingDeadlines.slice(0, 3).map((deadline) => {
+                  const pct = deadline.completion_percentage ?? 0;
+                  const dueDateStr = formatDueDate(deadline.due_date);
+                  const noDate = dueDateStr === "No date";
+                  return (
                   <div key={deadline.id} className="glass p-4 rounded-2xl hover:shadow-lg transition-shadow">
                     <div className="flex justify-between items-start mb-3">
                       <div>
                         <h3 className="font-semibold text-lg">{deadline.title}</h3>
                         <p className="text-sm text-muted-foreground">{deadline.course?.code ?? deadline.course?.name ?? ""}</p>
                       </div>
-                      <Badge className={priorityColor(deadline.priority)}>{formatDueDate(deadline.due_date)}</Badge>
+                      <div className="flex flex-col items-end gap-1">
+                        <Badge className={priorityColor(deadline.priority)}>{deadline.priority}</Badge>
+                        <span className={`text-xs font-medium ${noDate ? "text-muted-foreground" : dueDateStr === "Overdue" ? "text-destructive" : "text-primary"}`}>
+                          {noDate ? "No due date set" : `Due: ${dueDateStr}`}
+                        </span>
+                      </div>
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-1">
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Progress</span>
-                        <span className="font-medium">{deadline.completion_percentage ?? 0}%</span>
+                        <span className="font-medium">{pct}%</span>
                       </div>
-                      <Progress value={deadline.completion_percentage ?? 0} className="h-2" />
-                      <p className="text-xs text-muted-foreground">Estimated: {deadline.estimated_hours ?? 0} hours remaining</p>
+                      <Progress value={pct} className="h-2 bg-muted" />
+                      <p className="text-xs text-muted-foreground">
+                        {deadline.estimated_hours
+                          ? `~${Math.round(deadline.estimated_hours * (1 - pct / 100))}h remaining of ${deadline.estimated_hours}h`
+                          : "No estimate set"}
+                      </p>
                     </div>
                   </div>
-                ))
+                  );
+                })
               )}
             </div>
           </Card>
@@ -509,7 +538,39 @@ const Dashboard = () => {
               </h2>
               <Link to="/buddies"><Button variant="ghost" size="sm">Find More</Button></Link>
             </div>
-            <p className="text-sm text-muted-foreground text-center py-8">Connect with study buddies in the Buddies tab!</p>
+            {studyBuddies.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">Connect with study buddies in the Buddies tab!</p>
+            ) : (
+              <div className="space-y-3">
+                {studyBuddies.slice(0, 4).map((buddy) => (
+                  <Link
+                    key={buddy.id ?? buddy.username}
+                    to={buddy.id ? `/buddies?tab=mybuddies&buddyId=${buddy.id}` : "/buddies?tab=mybuddies"}
+                    className="glass p-3 rounded-2xl flex items-center gap-3 hover:scale-[1.02] transition-transform"
+                  >
+                    <div className="relative shrink-0">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-primary text-white flex items-center justify-center text-sm font-bold">
+                        {buddyInitials(buddy.name, buddy.surname, buddy.username)}
+                      </div>
+                      <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full ${buddy.status === "ACTIVE" ? "bg-accent" : "bg-muted"} border-2 border-white`} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-sm truncate">
+                        {buddy.name ?? buddy.username}{buddy.surname ? ` ${buddy.surname}` : ""}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {buddy.courses[0] ?? buddy.major ?? "Study buddy"}
+                      </p>
+                    </div>
+                    {((buddy.unread_count ?? 0) > 0) && (
+                      <Badge className="bg-red-500 text-white border-0 shrink-0">
+                        {buddy.unread_count > 99 ? "99+" : buddy.unread_count}
+                      </Badge>
+                    )}
+                  </Link>
+                ))}
+              </div>
+            )}
           </Card>
 
           {/* Quiz Activity */}
@@ -522,12 +583,17 @@ const Dashboard = () => {
               <p className="text-sm text-muted-foreground text-center py-8">No quiz activity yet. Start a quiz from the Courses tab!</p>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {quizCourses.slice(0, 6).map((course, i) => (
-                  <div key={course} className="glass p-4 rounded-2xl text-center hover:scale-105 transition-transform">
+                {quizCourses.slice(0, 6).map((course) => (
+                  <button
+                    key={course}
+                    type="button"
+                    onClick={() => navigate("/courses", { state: { openCourse: course } })}
+                    className="glass p-4 rounded-2xl text-center hover:scale-105 transition-transform cursor-pointer"
+                  >
                     <div className="text-3xl mb-2">📚</div>
                     <h3 className="font-semibold text-sm mb-1 truncate">{course}</h3>
                     <p className="text-xs text-primary font-medium">Quiz available</p>
-                  </div>
+                  </button>
                 ))}
               </div>
             )}

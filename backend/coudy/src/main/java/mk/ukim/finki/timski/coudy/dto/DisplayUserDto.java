@@ -3,14 +3,17 @@ package mk.ukim.finki.timski.coudy.dto;
 import mk.ukim.finki.timski.coudy.model.domain.User;
 import mk.ukim.finki.timski.coudy.model.enumerations.Role;
 
-public record DisplayUserDto(String username, String name, String surname, Role role) {
+public record DisplayUserDto(String username, String name, String surname, Role role, String bio, String major, String year) {
 
     public static DisplayUserDto from(User user) {
         return new DisplayUserDto(
                 user.getUsername(),
                 user.getName(),
                 user.getSurname(),
-                user.getRole()
+                user.getRole(),
+                user.getBio(),
+                user.getMajor(),
+                user.getYear()
         );
     }
 

@@ -1,63 +1,50 @@
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Activity } from "lucide-react";
-import habitApi, { WeeklySummary } from "@/api/habitApi";
+import focusApi from "@/api/focusApi";
 
 interface DayActivity {
   date: string;
-  count: number;
+  minutes: number;
 }
 
 const ActivityHeatmap = () => {
-  const [weeklyData, setWeeklyData] = useState<WeeklySummary[]>([]);
+  const [dailyMinutes, setDailyMinutes] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    habitApi.getWeeklySummary().then(setWeeklyData).catch(() => {});
+    focusApi.getDailyMinutes().then(setDailyMinutes).catch(() => {});
   }, []);
 
-  // Build 365-day grid: real data for this week's days, 0 for others
   const buildActivityData = (): DayActivity[] => {
     const data: DayActivity[] = [];
     const today = new Date();
-    const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
     for (let i = 364; i >= 0; i--) {
       const date = new Date(today);
       date.setDate(date.getDate() - i);
-      const dayName = dayNames[date.getDay()];
-      const match = weeklyData.find((d) => d.day === dayName);
-      // Only mark current week days (i < 7) with real data
-      const count = i < 7 && match ? match.completed : 0;
-      data.push({ date: date.toISOString().split("T")[0], count });
+      const key = date.toISOString().split("T")[0];
+      data.push({ date: key, minutes: dailyMinutes[key] ?? 0 });
     }
     return data;
   };
 
   const activityData = buildActivityData();
 
-  const getIntensityClass = (count: number) => {
-    if (count === 0) return "bg-muted/50 dark:bg-muted/30";
-    if (count <= 2) return "bg-primary/20 dark:bg-primary/15";
-    if (count <= 4) return "bg-primary/40 dark:bg-primary/30";
-    if (count <= 6) return "bg-primary/60 dark:bg-primary/45";
-    return "bg-primary/80 dark:bg-primary/60";
+  const getIntensityClass = (minutes: number) => {
+    if (minutes === 0) return "bg-[#161b22] border border-[#21262d]";
+    if (minutes < 30) return "bg-[#0e4429]";
+    if (minutes < 60) return "bg-[#006d32]";
+    if (minutes < 120) return "bg-[#26a641]";
+    return "bg-[#39d353]";
   };
 
-  // Group by weeks and months
   const weeks: DayActivity[][] = [];
   const months: string[] = [];
-  
+
   for (let i = 0; i < activityData.length; i += 7) {
     weeks.push(activityData.slice(i, i + 7));
-    
-    // Get month for first day of week
     if (activityData[i]) {
-      const monthYear = new Date(activityData[i].date).toLocaleDateString('en-US', { month: 'short' });
-      if (!months.includes(monthYear) || i === 0) {
-        months.push(monthYear);
-      } else {
-        months.push('');
-      }
+      const monthYear = new Date(activityData[i].date).toLocaleDateString("en-US", { month: "short" });
+      months.push(i === 0 || months[months.length - 1] !== monthYear ? monthYear : "");
     }
   }
 
@@ -71,7 +58,7 @@ const ActivityHeatmap = () => {
       <div className="overflow-x-auto">
         <div className="mb-2 flex gap-1">
           {months.map((month, index) => (
-            <div key={index} className="text-xs text-muted-foreground" style={{ minWidth: '12px' }}>
+            <div key={index} className="text-xs text-muted-foreground" style={{ minWidth: "12px" }}>
               {month}
             </div>
           ))}
@@ -82,8 +69,8 @@ const ActivityHeatmap = () => {
               {week.map((day, dayIndex) => (
                 <div
                   key={dayIndex}
-                  className={`w-3 h-3 rounded-sm ${getIntensityClass(day.count)} transition-all hover:scale-110 hover:ring-1 hover:ring-primary/50 dark:hover:ring-primary/30`}
-                  title={`${day.date}: ${day.count} hours`}
+                  className={`w-3 h-3 rounded-sm ${getIntensityClass(day.minutes)} transition-all hover:scale-110 hover:ring-1 hover:ring-primary/50`}
+                  title={`${day.date}: ${day.minutes} min studied`}
                 />
               ))}
             </div>
@@ -94,11 +81,11 @@ const ActivityHeatmap = () => {
       <div className="flex items-center gap-4 mt-4 text-xs text-muted-foreground">
         <span>Less</span>
         <div className="flex gap-1">
-          <div className="w-3 h-3 rounded-sm bg-muted/50 dark:bg-muted/30" />
-          <div className="w-3 h-3 rounded-sm bg-primary/20 dark:bg-primary/15" />
-          <div className="w-3 h-3 rounded-sm bg-primary/40 dark:bg-primary/30" />
-          <div className="w-3 h-3 rounded-sm bg-primary/60 dark:bg-primary/45" />
-          <div className="w-3 h-3 rounded-sm bg-primary/80 dark:bg-primary/60" />
+          <div className="w-3 h-3 rounded-sm bg-[#161b22] border border-[#21262d]" title="No activity" />
+          <div className="w-3 h-3 rounded-sm bg-[#0e4429]" title="< 30 min" />
+          <div className="w-3 h-3 rounded-sm bg-[#006d32]" title="30–60 min" />
+          <div className="w-3 h-3 rounded-sm bg-[#26a641]" title="60–120 min" />
+          <div className="w-3 h-3 rounded-sm bg-[#39d353]" title="120+ min" />
         </div>
         <span>More</span>
       </div>

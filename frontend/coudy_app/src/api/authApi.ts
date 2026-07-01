@@ -19,6 +19,17 @@ export interface DisplayUserDto {
   name: string;
   surname: string;
   role: string;
+  bio?: string;
+  major?: string;
+  year?: string;
+}
+
+export interface UpdateProfileRequest {
+  name?: string;
+  surname?: string;
+  bio?: string;
+  major?: string;
+  year?: string;
 }
 
 export interface LoginResponseDto {
@@ -35,4 +46,7 @@ export const authApi = {
   logout: () => axiosInstance.get("/user/logout"),
 
   getMe: () => axiosInstance.get<DisplayUserDto>("/user/me").then((r) => r.data),
+
+  updateMe: (data: UpdateProfileRequest) =>
+    axiosInstance.put<DisplayUserDto>("/user/me", data).then((r) => r.data),
 };

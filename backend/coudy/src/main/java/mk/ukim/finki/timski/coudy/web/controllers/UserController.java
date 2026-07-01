@@ -9,6 +9,7 @@ import mk.ukim.finki.timski.coudy.dto.CreateUserDto;
 import mk.ukim.finki.timski.coudy.dto.DisplayUserDto;
 import mk.ukim.finki.timski.coudy.dto.LoginResponseDto;
 import mk.ukim.finki.timski.coudy.dto.LoginUserDto;
+import mk.ukim.finki.timski.coudy.dto.UpdateProfileRequest;
 import mk.ukim.finki.timski.coudy.model.domain.User;
 import mk.ukim.finki.timski.coudy.model.exceptions.InvalidArgumentsException;
 import mk.ukim.finki.timski.coudy.model.exceptions.InvalidUserCredentialsException;
@@ -90,5 +91,16 @@ public class UserController {
     @GetMapping("/me")
     public ResponseEntity<DisplayUserDto> getMe(@AuthenticationPrincipal User user) {
         return ResponseEntity.ok(DisplayUserDto.from(user));
+    }
+
+    @Operation(summary = "Update current user profile")
+    @PutMapping("/me")
+    public ResponseEntity<DisplayUserDto> updateMe(
+            @AuthenticationPrincipal User user,
+            @RequestBody UpdateProfileRequest request
+    ) {
+        return userApplicationService.updateProfile(user.getUsername(), request)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.status(500).build());
     }
 }

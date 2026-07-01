@@ -4,6 +4,7 @@ import mk.ukim.finki.timski.coudy.dto.CreateUserDto;
 import mk.ukim.finki.timski.coudy.dto.DisplayUserDto;
 import mk.ukim.finki.timski.coudy.dto.LoginResponseDto;
 import mk.ukim.finki.timski.coudy.dto.LoginUserDto;
+import mk.ukim.finki.timski.coudy.dto.UpdateProfileRequest;
 import mk.ukim.finki.timski.coudy.helpers.JwtHelper;
 import mk.ukim.finki.timski.coudy.model.domain.User;
 import mk.ukim.finki.timski.coudy.service.application.UserApplicationService;
@@ -51,5 +52,18 @@ public class UserApplicationServiceImpl implements UserApplicationService {
     @Override
     public Optional<DisplayUserDto> findByUsername(String username) {
         return Optional.of(DisplayUserDto.from(userService.findByUsername(username)));
+    }
+
+    @Override
+    public Optional<DisplayUserDto> updateProfile(String username, UpdateProfileRequest request) {
+        User user = userService.updateProfile(
+                username,
+                request.getName(),
+                request.getSurname(),
+                request.getBio(),
+                request.getMajor(),
+                request.getYear()
+        );
+        return Optional.of(DisplayUserDto.from(user));
     }
 }

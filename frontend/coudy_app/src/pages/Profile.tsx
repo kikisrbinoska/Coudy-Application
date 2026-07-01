@@ -3,7 +3,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
-import { Mail, Calendar, Trophy, Flame, Target, Settings } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Mail, Calendar, Trophy, Flame, Target, Settings, Loader2 } from "lucide-react";
 import StudyTimer from "@/components/StudyTimer";
 import ActivityHeatmap from "@/components/ActivityHeatmap";
 import StudyTimetable from "@/components/StudyTimetable";
@@ -12,19 +16,50 @@ import { useAuth } from "@/context/AuthContext";
 import { useEffect, useState } from "react";
 import focusApi from "@/api/focusApi";
 import habitApi, { HabitDto } from "@/api/habitApi";
+import { authApi } from "@/api/authApi";
+import { useToast } from "@/hooks/use-toast";
 
 const SP_PER_LEVEL = 500;
 const calcLevel = (sp: number) => Math.max(1, Math.floor(sp / SP_PER_LEVEL) + 1);
 
 const Profile = () => {
-  const { user: authUser, token } = useAuth();
+  const { user: authUser, token, updateUser } = useAuth();
+  const { toast } = useToast();
   const [syncPoints, setSyncPoints] = useState(0);
   const [habits, setHabits] = useState<HabitDto[]>([]);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editForm, setEditForm] = useState({ name: "", surname: "", bio: "", major: "", year: "" });
+  const [savingProfile, setSavingProfile] = useState(false);
 
   useEffect(() => {
     focusApi.getPoints().then(setSyncPoints).catch(() => {});
     habitApi.getAll().then(setHabits).catch(() => {});
   }, []);
+
+  const openEditProfile = () => {
+    setEditForm({
+      name: authUser?.name ?? "",
+      surname: authUser?.surname ?? "",
+      bio: authUser?.bio ?? "",
+      major: authUser?.major ?? "",
+      year: authUser?.year ?? "",
+    });
+    setEditOpen(true);
+  };
+
+  const saveProfile = async () => {
+    setSavingProfile(true);
+    try {
+      const updated = await authApi.updateMe(editForm);
+      updateUser(updated);
+      toast({ title: "Profile updated" });
+      setEditOpen(false);
+    } catch {
+      toast({ title: "Error", description: "Failed to update profile.", variant: "destructive" });
+    } finally {
+      setSavingProfile(false);
+    }
+  };
 
   const fullName =
     authUser?.name && authUser?.surname
@@ -95,9 +130,17 @@ const Profile = () => {
                         Joined {joinDate}
                       </span>
                     )}
+                    {(authUser?.major || authUser?.year) && (
+                      <span>
+                        {[authUser?.major, authUser?.year].filter(Boolean).join(" • ")}
+                      </span>
+                    )}
                   </div>
+                  {authUser?.bio && (
+                    <p className="text-sm text-muted-foreground mt-2 max-w-xl">{authUser.bio}</p>
+                  )}
                 </div>
-                <Button variant="outline" className="self-start md:self-auto">
+                <Button variant="outline" className="self-start md:self-auto" onClick={openEditProfile}>
                   <Settings className="w-4 h-4 mr-2" />
                   Edit Profile
                 </Button>
@@ -179,6 +222,67 @@ const Profile = () => {
         {/* Study Timetable */}
         <StudyTimetable />
       </div>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Profile</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-2">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="edit-name">First Name</Label>
+                <Input
+                  id="edit-name"
+                  value={editForm.name}
+                  onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-surname">Last Name</Label>
+                <Input
+                  id="edit-surname"
+                  value={editForm.surname}
+                  onChange={(e) => setEditForm((f) => ({ ...f, surname: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="edit-major">Major</Label>
+              <Input
+                id="edit-major"
+                value={editForm.major}
+                onChange={(e) => setEditForm((f) => ({ ...f, major: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-year">Year</Label>
+              <Input
+                id="edit-year"
+                value={editForm.year}
+                onChange={(e) => setEditForm((f) => ({ ...f, year: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-bio">Bio</Label>
+              <Textarea
+                id="edit-bio"
+                rows={3}
+                value={editForm.bio}
+                onChange={(e) => setEditForm((f) => ({ ...f, bio: e.target.value }))}
+              />
+            </div>
+            <Button
+              className="w-full gradient-primary border-0"
+              onClick={saveProfile}
+              disabled={savingProfile}
+            >
+              {savingProfile && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Save Changes
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

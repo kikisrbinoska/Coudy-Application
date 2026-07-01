@@ -61,4 +61,16 @@ public class UserServiceImpl implements UserService {
             throw new InvalidUserCredentialsException();
         return user;
     }
+
+    @Override
+    public User updateProfile(String username, String name, String surname, String bio, String major, String year) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new UserNotFoundException(username));
+        if (name != null) user.setName(name);
+        if (surname != null) user.setSurname(surname);
+        if (bio != null) user.setBio(bio);
+        if (major != null) user.setMajor(major);
+        if (year != null) user.setYear(year);
+        return userRepository.save(user);
+    }
 }

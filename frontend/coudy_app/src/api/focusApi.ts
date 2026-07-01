@@ -61,6 +61,9 @@ const focusApi = {
 
   getPoints: () =>
     axiosInstance.get<number>("/user/points").then((r) => r.data),
+
+  getDailyMinutes: () =>
+    axiosInstance.get<Record<string, number>>("/focus/sessions/daily").then((r) => r.data),
 };
 
 export default focusApi;

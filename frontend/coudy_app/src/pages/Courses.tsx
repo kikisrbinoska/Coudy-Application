@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -37,6 +38,8 @@ const QUESTION_COUNT = 3;
 const Courses = () => {
   const { user: authUser } = useAuth();
   const isAdmin = authUser?.role === "ROLE_ADMIN";
+  const location = useLocation();
+  const navigate = useNavigate();
 
   // course management
   const [courses, setCourses] = useState<Course[]>([]);
@@ -134,6 +137,15 @@ const Courses = () => {
       setTopicsLoading(false);
     }
   };
+
+  useEffect(() => {
+    const openCourse = (location.state as { openCourse?: string } | null)?.openCourse;
+    if (openCourse) {
+      openTopics(openCourse);
+      navigate(location.pathname, { replace: true, state: null });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state]);
 
   const startQuiz = async (topic: string) => {
     setSelectedTopic(topic);

@@ -8,7 +8,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/focus")
@@ -58,6 +60,11 @@ public class FocusController {
     @GetMapping("/sessions/stats")
     public FocusStatsDto getStats(@AuthenticationPrincipal User user) {
         return focusService.getStats(user);
+    }
+
+    @GetMapping("/sessions/daily")
+    public Map<LocalDate, Integer> getDailyMinutes(@AuthenticationPrincipal User user) {
+        return focusService.getDailyMinutes(user);
     }
 
     @GetMapping("/settings")

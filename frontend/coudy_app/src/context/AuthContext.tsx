@@ -9,6 +9,7 @@ interface AuthContextType {
   login: (data: LoginUserDto) => Promise<void>;
   register: (data: CreateUserDto) => Promise<void>;
   logout: () => void;
+  updateUser: (data: Partial<DisplayUserDto>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -37,34 +38,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const response = await authApi.login(data);
     const jwt = response.data.token;
     localStorage.setItem("token", jwt);
-
-    // Backend only returns token, so build user from login data
-    // and decode role from JWT payload if available
-    let role = "ROLE_USER";
-    try {
-      const payload = JSON.parse(atob(jwt.split(".")[1]));
-      if (Array.isArray(payload.roles) && payload.roles.length > 0) {
-        const first = payload.roles[0];
-        if (typeof first === "string") {
-          role = first;
-        } else if (typeof first?.authority === "string") {
-          role = first.authority;
-        }
-      } else if (typeof payload.role === "string") {
-        role = payload.role;
-      }
-    } catch {
-      // fallback to default role
-    }
-
-    const userData: DisplayUserDto = {
-      username: data.username,
-      name: "",
-      surname: "",
-      role,
-    };
-    localStorage.setItem("user", JSON.stringify(userData));
     setToken(jwt);
+
+    const userData = await authApi.getMe();
+    localStorage.setItem("user", JSON.stringify(userData));
     setUser(userData);
   };
 
@@ -80,6 +57,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(null);
   };
 
+  const updateUser = (data: Partial<DisplayUserDto>) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, ...data };
+      localStorage.setItem("user", JSON.stringify(next));
+      return next;
+    });
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -90,6 +76,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         login,
         register,
         logout,
+        updateUser,
       }}
     >
       {children}

@@ -15,8 +15,11 @@ import mk.ukim.finki.timski.coudy.service.domain.FocusService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class FocusServiceImpl implements FocusService {
@@ -113,6 +116,16 @@ public class FocusServiceImpl implements FocusService {
                 .mapToInt(s -> s.getPointsEarned() == null ? 0 : s.getPointsEarned())
                 .sum();
         return new FocusStatsDto(totalSessions, totalSeconds / 60, totalPointsEarned);
+    }
+
+    @Override
+    public Map<LocalDate, Integer> getDailyMinutes(User user) {
+        return focusSessionRepository.findAllByUser(user).stream()
+                .filter(s -> s.getStartedAt() != null && s.getDurationSeconds() != null)
+                .collect(Collectors.groupingBy(
+                        s -> s.getStartedAt().toLocalDate(),
+                        Collectors.summingInt(s -> s.getDurationSeconds() / 60)
+                ));
     }
 
     @Override

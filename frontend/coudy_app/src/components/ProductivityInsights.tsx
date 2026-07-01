@@ -26,7 +26,7 @@ const ProductivityInsights = () => {
   }, []);
 
   const avgSessionHours = focusStats.total_sessions > 0
-    ? Math.round((focusStats.total_minutes / focusStats.total_sessions) * 10) / 10 / 60
+    ? Math.round((focusStats.total_minutes / focusStats.total_sessions) / 60 * 10) / 10
     : 0;
 
   // Map weekly habit completions to bar chart format
