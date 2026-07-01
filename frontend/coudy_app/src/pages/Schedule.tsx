@@ -40,6 +40,15 @@ const Schedule = () => {
     { day: "FRIDAY", start_time: "14:00:00", end_time: "17:00:00" },
   ]);
 
+  const [cancelledBlocks, setCancelledBlocks] = useState<Set<number>>(new Set());
+
+  const toggleCancelBlock = (blockId: number) =>
+    setCancelledBlocks((prev) => {
+      const next = new Set(prev);
+      next.has(blockId) ? next.delete(blockId) : next.add(blockId);
+      return next;
+    });
+
   const { data: schedule, isLoading } = useQuery({
     queryKey: ["schedule", weekStart],
     queryFn: () => scheduleApi.getForWeek(weekStart),
@@ -238,39 +247,56 @@ const Schedule = () => {
                     </span>
                   </div>
                   <div className="space-y-2">
-                    {blocks.map((block) => (
-                      <div
-                        key={block.id}
-                        className={`${PRIORITY_GRADIENT[block.priority] ?? "bg-gradient-to-br from-primary to-secondary"} p-3 rounded-xl text-white shadow-md`}
-                      >
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <p className="font-semibold">{block.deadline_title}</p>
-                            <p className="text-xs opacity-75">{block.course_name}</p>
-                            <p className="text-xs opacity-90 mt-1">
-                              {block.start_time.slice(0, 5)} – {block.end_time.slice(0, 5)}
-                            </p>
-                          </div>
-                          <div className="flex flex-col items-end gap-1">
-                            <span className="text-xs bg-white/20 px-2 py-1 rounded">
-                              {(block.allocated_minutes / 60).toFixed(1)}h
-                            </span>
-                            <span className="text-xs bg-white/20 px-2 py-1 rounded">
-                              {block.priority}
-                            </span>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-6 w-6 text-white/80 hover:text-white hover:bg-white/20"
-                              onClick={() => deleteBlockMutation.mutate(block.id)}
-                              disabled={deleteBlockMutation.isPending}
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </Button>
+                    {blocks.map((block) => {
+                      const isCancelled = cancelledBlocks.has(block.id);
+                      return (
+                        <div
+                          key={block.id}
+                          className={`p-3 rounded-xl shadow-md transition-colors ${
+                            isCancelled
+                              ? "bg-muted/70 text-muted-foreground border border-border"
+                              : `${PRIORITY_GRADIENT[block.priority] ?? "bg-gradient-to-br from-primary to-secondary"} text-primary-foreground`
+                          }`}
+                        >
+                          <div className="flex justify-between items-start">
+                            <div className={isCancelled ? "line-through" : ""}>
+                              <p className="font-bold">{block.deadline_title}</p>
+                              <p className="text-xs font-medium opacity-90">{block.course_name}</p>
+                              <p className="text-xs font-semibold mt-1">
+                                {block.start_time.slice(0, 5)} – {block.end_time.slice(0, 5)}
+                              </p>
+                            </div>
+                            <div className="flex flex-col items-end gap-1">
+                              <span className={`text-xs px-2 py-1 rounded font-semibold ${isCancelled ? "bg-background/60" : "bg-black/10"}`}>
+                                {(block.allocated_minutes / 60).toFixed(1)}h
+                              </span>
+                              <span className={`text-xs px-2 py-1 rounded font-semibold ${isCancelled ? "bg-background/60" : "bg-black/10"}`}>
+                                {block.priority}
+                              </span>
+                              <div className="flex items-center gap-1 mt-1">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className={`h-6 px-2 text-xs font-bold ${isCancelled ? "hover:bg-background/60" : "hover:bg-black/10"}`}
+                                  onClick={() => toggleCancelBlock(block.id)}
+                                >
+                                  {isCancelled ? "Undo" : "Cancel"}
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className={`h-6 w-6 ${isCancelled ? "hover:bg-background/60" : "hover:bg-black/10"}`}
+                                  onClick={() => deleteBlockMutation.mutate(block.id)}
+                                  disabled={deleteBlockMutation.isPending}
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </Button>
+                              </div>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               );
