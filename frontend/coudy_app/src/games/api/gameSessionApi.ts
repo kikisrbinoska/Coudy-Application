@@ -1,7 +1,8 @@
 import axiosInstance, { API_ORIGIN } from "@/api/axios";
 
+// Поправено за да одговара на реалниот GameSession ентитет што го враќа бекендот
 export interface GameSessionStartDto {
-  sessionId: number;
+  id: number; // <--- Променето од sessionId во id
   status: string;
   currentQuestionIndex: number;
 }
@@ -26,11 +27,9 @@ export interface SubmitAnswerResponseDto {
 }
 
 const gameSessionApi = {
-  start: (gameId: number, userId: number) =>
+  start: (gameId: number) =>
     axiosInstance
-      .post<GameSessionStartDto>(
-        `/game-sessions/start?gameId=${gameId}&userId=${userId}`
-      )
+      .post<GameSessionStartDto>(`/game-sessions/start?gameId=${gameId}`)
       .then((r) => r.data),
 
   getQuestion: (sessionId: number) =>
@@ -40,10 +39,7 @@ const gameSessionApi = {
 
   answer: (sessionId: number, answer: string) =>
     axiosInstance
-      .post<SubmitAnswerResponseDto>(
-        `${API_ORIGIN}/game-sessions/${sessionId}/answer`,
-        { answer }
-      )
+      .post<SubmitAnswerResponseDto>(`/game-sessions/${sessionId}/answer`, { answer })
       .then((r) => r.data),
 
   finish: (sessionId: number) =>

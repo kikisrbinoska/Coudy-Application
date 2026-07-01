@@ -1,32 +1,11 @@
-package mk.ukim.finki.timski.coudy.config;
+package mk.ukim.finki.timski.coudy.config.security;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
-
-import mk.ukim.finki.timski.coudy.model.domain.Course;
-import mk.ukim.finki.timski.coudy.model.domain.Deadline;
-import mk.ukim.finki.timski.coudy.model.domain.Game;
-import mk.ukim.finki.timski.coudy.model.domain.QuizTopic;
-import mk.ukim.finki.timski.coudy.model.domain.User;
-import mk.ukim.finki.timski.coudy.model.enumerations.DeadlineStatus;
-import mk.ukim.finki.timski.coudy.model.enumerations.Difficulty;
-import mk.ukim.finki.timski.coudy.model.enumerations.Priority;
-import mk.ukim.finki.timski.coudy.model.enumerations.Role;
-import mk.ukim.finki.timski.coudy.repository.DeadlineRepository;
-
-
 import mk.ukim.finki.timski.coudy.model.domain.*;
 import mk.ukim.finki.timski.coudy.model.enumerations.*;
-import mk.ukim.finki.timski.coudy.repository.DeadlineRepository;
-import mk.ukim.finki.timski.coudy.repository.GameRepository;
-import mk.ukim.finki.timski.coudy.repository.QuestionRepository;
-
-
-import mk.ukim.finki.timski.coudy.repository.GameRepository;
-import mk.ukim.finki.timski.coudy.repository.QuizTopicRepository;
-
-import mk.ukim.finki.timski.coudy.repository.UserRepository;
+import mk.ukim.finki.timski.coudy.repository.*;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Profile;
@@ -73,7 +52,11 @@ public class DataInitializer implements ApplicationRunner {
             }
         }
 
-        if (userRepository.findByUsername("kikis").isPresent()) return;
+        if (userRepository.findByUsername("kikis").isPresent())
+        {
+            System.out.println("EXITING DATA INITIALIZER");
+            return;
+        }
 
         // ── Users ─────────────────────────────────────────────────────────────
         User user = new User("kikis", passwordEncoder.encode("password123"), "Kiki", "Test", Role.ROLE_USER);
@@ -326,7 +309,7 @@ public class DataInitializer implements ApplicationRunner {
         //QUESTIONS
         Question q1 = new Question();
         q1.setGame(g1);
-        q1.setText("2 + 2 = ?");
+        q1.setText("3 + 2 = ?");
         q1.setOptions(List.of("3", "4", "5"));
         q1.setCorrectAnswer("4");
         q1.setQuestionType(QuestionType.SINGLE_CHOICE);
@@ -348,7 +331,13 @@ public class DataInitializer implements ApplicationRunner {
         q3.setQuestionType(QuestionType.SINGLE_CHOICE);
         questionRepository.save(q3);
 
-
+        Question q4 = new Question();
+        q4.setGame(g1);
+        q4.setText("5 * 6 = ?");
+        q4.setOptions(List.of("11", "30", "56"));
+        q4.setCorrectAnswer("30");
+        q4.setQuestionType(QuestionType.SINGLE_CHOICE);
+        questionRepository.save(q4);
 
         System.out.println("=================================================");
         System.out.println("  Dev data initialized:");
