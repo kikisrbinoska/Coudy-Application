@@ -27,7 +27,6 @@ import {
   Trophy,
   ArrowLeft,
 } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
 import courseApi, { Course, CreateCourseRequest } from "@/api/courseApi";
 import quizApi, { QuizQuestion, QuizResult } from "@/api/quizApi";
 
@@ -36,8 +35,6 @@ type View = "courses" | "topics" | "quiz" | "results";
 const QUESTION_COUNT = 3;
 
 const Courses = () => {
-  const { user: authUser } = useAuth();
-  const isAdmin = authUser?.role === "ROLE_ADMIN";
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -430,12 +427,11 @@ const Courses = () => {
           <div>
             <h1 className="text-4xl font-bold mb-2">Courses</h1>
             <p className="text-muted-foreground">
-              {isAdmin ? "Manage courses and take quizzes" : "Select a course to take a quiz"}
+              Manage courses and take quizzes
             </p>
           </div>
 
-          {isAdmin && (
-            <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
               <DialogTrigger asChild>
                 <Button className="gradient-primary border-0" onClick={openCreate}>
                   <Plus className="w-4 h-4 mr-2" />
@@ -476,7 +472,6 @@ const Courses = () => {
                 </div>
               </DialogContent>
             </Dialog>
-          )}
         </div>
 
         {loading ? (
@@ -487,7 +482,7 @@ const Courses = () => {
           <Card className="glass-card p-12 border-0 text-center">
             <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
             <p className="text-muted-foreground">
-              {isAdmin ? "No courses yet. Create the first one!" : "No courses available yet."}
+              No courses yet. Create the first one!
             </p>
           </Card>
         ) : (
@@ -500,36 +495,34 @@ const Courses = () => {
               >
                 <div className="flex items-start justify-between mb-4">
                   <Badge className="bg-primary/20 text-primary">{course.code}</Badge>
-                  {isAdmin && (
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="w-8 h-8"
-                        title="Upload presentations"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setUploadCourse(course);
-                          setUploadFiles([]);
-                          setUploadResult(null);
-                        }}
-                      >
-                        <Upload className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="w-8 h-8"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setForm({ code: course.code, name: course.name });
-                          setEditCourse(course);
-                        }}
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  )}
+                  <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="w-8 h-8"
+                      title="Upload presentations"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setUploadCourse(course);
+                        setUploadFiles([]);
+                        setUploadResult(null);
+                      }}
+                    >
+                      <Upload className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="w-8 h-8"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setForm({ code: course.code, name: course.name });
+                        setEditCourse(course);
+                      }}
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -548,7 +541,6 @@ const Courses = () => {
         )}
 
         {/* Upload presentations dialog */}
-        {isAdmin && (
           <Dialog open={!!uploadCourse} onOpenChange={(open) => { if (!open) { setUploadCourse(null); setUploadResult(null); setUploadFiles([]); } }}>
             <DialogContent>
               <DialogHeader>
@@ -586,9 +578,7 @@ const Courses = () => {
               </div>
             </DialogContent>
           </Dialog>
-        )}
 
-        {isAdmin && (
           <Dialog open={!!editCourse} onOpenChange={(open) => { if (!open) setEditCourse(null); }}>
             <DialogContent>
               <DialogHeader>
@@ -622,7 +612,6 @@ const Courses = () => {
               </div>
             </DialogContent>
           </Dialog>
-        )}
       </div>
     </div>
   );
