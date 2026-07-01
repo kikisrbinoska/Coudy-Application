@@ -339,13 +339,138 @@ public class DataInitializer implements ApplicationRunner {
         q4.setQuestionType(QuestionType.SINGLE_CHOICE);
         questionRepository.save(q4);
 
+        // Code Duel (g2)
+        Question q5 = new Question();
+        q5.setGame(g2);
+        q5.setText("Which keyword declares a constant in Java?");
+        q5.setOptions(List.of("var", "final", "let"));
+        q5.setCorrectAnswer("final");
+        q5.setQuestionType(QuestionType.SINGLE_CHOICE);
+        questionRepository.save(q5);
+
+        Question q6 = new Question();
+        q6.setGame(g2);
+        q6.setText("What does JVM stand for?");
+        q6.setOptions(List.of("Java Virtual Machine", "Java Variable Method", "Just Virtual Memory"));
+        q6.setCorrectAnswer("Java Virtual Machine");
+        q6.setQuestionType(QuestionType.SINGLE_CHOICE);
+        questionRepository.save(q6);
+
+        Question q7 = new Question();
+        q7.setGame(g2);
+        q7.setText("Which data structure uses FIFO order?");
+        q7.setOptions(List.of("Stack", "Queue", "Tree"));
+        q7.setCorrectAnswer("Queue");
+        q7.setQuestionType(QuestionType.SINGLE_CHOICE);
+        questionRepository.save(q7);
+
+        // History Hunt (g3)
+        Question q8 = new Question();
+        q8.setGame(g3);
+        q8.setText("In which year did World War II end?");
+        q8.setOptions(List.of("1943", "1945", "1950"));
+        q8.setCorrectAnswer("1945");
+        q8.setQuestionType(QuestionType.SINGLE_CHOICE);
+        questionRepository.save(q8);
+
+        Question q9 = new Question();
+        q9.setGame(g3);
+        q9.setText("Who was the first President of the United States?");
+        q9.setOptions(List.of("Thomas Jefferson", "George Washington", "Abraham Lincoln"));
+        q9.setCorrectAnswer("George Washington");
+        q9.setQuestionType(QuestionType.SINGLE_CHOICE);
+        questionRepository.save(q9);
+
+        Question q10 = new Question();
+        q10.setGame(g3);
+        q10.setText("The Great Wall is located in which country?");
+        q10.setOptions(List.of("China", "India", "Egypt"));
+        q10.setCorrectAnswer("China");
+        q10.setQuestionType(QuestionType.SINGLE_CHOICE);
+        questionRepository.save(q10);
+
+        // Science Lab (g4)
+        Question q11 = new Question();
+        q11.setGame(g4);
+        q11.setText("What is the chemical symbol for water?");
+        q11.setOptions(List.of("H2O", "CO2", "O2"));
+        q11.setCorrectAnswer("H2O");
+        q11.setQuestionType(QuestionType.SINGLE_CHOICE);
+        questionRepository.save(q11);
+
+        Question q12 = new Question();
+        q12.setGame(g4);
+        q12.setText("What force pulls objects toward the Earth?");
+        q12.setOptions(List.of("Magnetism", "Gravity", "Friction"));
+        q12.setCorrectAnswer("Gravity");
+        q12.setQuestionType(QuestionType.SINGLE_CHOICE);
+        questionRepository.save(q12);
+
+        Question q13 = new Question();
+        q13.setGame(g4);
+        q13.setText("How many bones are in the adult human body?");
+        q13.setOptions(List.of("206", "150", "300"));
+        q13.setCorrectAnswer("206");
+        q13.setQuestionType(QuestionType.SINGLE_CHOICE);
+        questionRepository.save(q13);
+
+        // Word Wizard (g5)
+        Question q14 = new Question();
+        q14.setGame(g5);
+        q14.setText("Which word is a synonym for \"happy\"?");
+        q14.setOptions(List.of("Joyful", "Angry", "Tired"));
+        q14.setCorrectAnswer("Joyful");
+        q14.setQuestionType(QuestionType.SINGLE_CHOICE);
+        questionRepository.save(q14);
+
+        Question q15 = new Question();
+        q15.setGame(g5);
+        q15.setText("What is the plural of \"child\"?");
+        q15.setOptions(List.of("Childs", "Children", "Childes"));
+        q15.setCorrectAnswer("Children");
+        q15.setQuestionType(QuestionType.SINGLE_CHOICE);
+        questionRepository.save(q15);
+
+        Question q16 = new Question();
+        q16.setGame(g5);
+        q16.setText("Which word means the opposite of \"ancient\"?");
+        q16.setOptions(List.of("Modern", "Old", "Historic"));
+        q16.setCorrectAnswer("Modern");
+        q16.setQuestionType(QuestionType.SINGLE_CHOICE);
+        questionRepository.save(q16);
+
+        // Logic Master (g6)
+        Question q17 = new Question();
+        q17.setGame(g6);
+        q17.setText("If all cats are animals, and Tom is a cat, then Tom is a...?");
+        q17.setOptions(List.of("Plant", "Animal", "Mineral"));
+        q17.setCorrectAnswer("Animal");
+        q17.setQuestionType(QuestionType.SINGLE_CHOICE);
+        questionRepository.save(q17);
+
+        Question q18 = new Question();
+        q18.setGame(g6);
+        q18.setText("What comes next in the sequence: 2, 4, 8, 16, ?");
+        q18.setOptions(List.of("18", "24", "32"));
+        q18.setCorrectAnswer("32");
+        q18.setQuestionType(QuestionType.SINGLE_CHOICE);
+        questionRepository.save(q18);
+
+        Question q19 = new Question();
+        q19.setGame(g6);
+        q19.setText("A statement that is either true or false is called a...?");
+        q19.setOptions(List.of("Proposition", "Question", "Opinion"));
+        q19.setCorrectAnswer("Proposition");
+        q19.setQuestionType(QuestionType.SINGLE_CHOICE);
+        questionRepository.save(q19);
+
         System.out.println("=================================================");
         System.out.println("  Dev data initialized:");
         System.out.println("  Users  : kikis / password123  (ROLE_USER)");
         System.out.println("           admin / admin123     (ROLE_ADMIN)");
         System.out.println("  Courses: MATH101, CS202, CS301");
         System.out.println("  Deadlines: 3 active deadlines for kikis");
-        System.out.println("  Games: 6 educational games seeded");
+        System.out.println("  Games: 6 educational games seeded, each with questions");
         System.out.println("=================================================");
     }
 }
