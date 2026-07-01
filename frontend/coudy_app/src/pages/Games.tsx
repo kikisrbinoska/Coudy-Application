@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import gameApi, { GameDto } from "@/api/gameApi";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ const difficultyColor: Record<string, string> = {
 
 const Games = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [games, setGames] = useState<GameDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +34,7 @@ const Games = () => {
     gameSessionApi.getMyResults()
       .then(setResults)
       .catch(console.error);
-  }, []);
+  }, [location.key]);
 
   const getLastResult = (gameId: number) =>
     results
