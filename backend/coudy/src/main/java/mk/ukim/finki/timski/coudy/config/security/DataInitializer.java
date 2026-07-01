@@ -126,7 +126,6 @@ public class DataInitializer implements ApplicationRunner {
 
         entityManager.flush();
 
-        // ── Deadlines ────────────────────────────────────────────────────────
         LocalDateTime now = LocalDateTime.now();
 
         Deadline d1 = new Deadline();
@@ -167,10 +166,6 @@ public class DataInitializer implements ApplicationRunner {
         d3.setStatus(DeadlineStatus.IN_PROGRESS);
         d3.setCreatedAt(now);
         deadlineRepository.save(d3);
-
-
-
-
 
         StudyBuddy buddy1 = new StudyBuddy();
         buddy1.setUser1(user);
@@ -312,7 +307,7 @@ public class DataInitializer implements ApplicationRunner {
     }
 
     private Game findOrCreateGame(String name, String description, String subject, String icon,
-                                   int points, int level, Difficulty difficulty, String category) {
+                                  int points, int level, Difficulty difficulty, String category) {
         return gameRepository.findByName(name).orElseGet(() -> {
             Game game = new Game();
             game.setName(name);

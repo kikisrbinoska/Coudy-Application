@@ -25,7 +25,13 @@ export interface SubmitAnswerResponseDto {
   status: string;
   finished: boolean;
 }
-
+export interface GameSessionResultDto {
+  game_id: number;
+  game_name: string;
+  score: number;
+  max_score: number;
+  end_time: string;
+}
 const gameSessionApi = {
   start: (gameId: number) =>
     axiosInstance
@@ -46,6 +52,11 @@ const gameSessionApi = {
     axiosInstance
       .post<SubmitAnswerResponseDto>(`/game-sessions/${sessionId}/finish`)
       .then((r) => r.data),
+
+  getMyResults: () =>
+  axiosInstance
+    .get<GameSessionResultDto[]>("/game-sessions/my-results")
+    .then((r) => r.data),
 };
 
 export default gameSessionApi;

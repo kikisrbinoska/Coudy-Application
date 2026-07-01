@@ -14,6 +14,7 @@ import focusApi, { FocusStatsDto } from "@/api/focusApi";
 import quizApi, { CourseStat } from "@/api/quizApi";
 import courseApi from "@/api/courseApi";
 import studyBuddyApi, { StudyBuddyCard } from "@/api/studyBuddyApi";
+import gameSessionApi, { GameSessionResultDto } from "@/games/api/gameSessionApi";
 
 const SP_PER_LEVEL = 500;
 const calcLevel = (sp: number) => Math.max(1, Math.floor(sp / SP_PER_LEVEL) + 1);
@@ -45,7 +46,7 @@ const Dashboard = () => {
   const [courseStats, setCourseStats] = useState<CourseStat[]>([]);
   const [courses, setCourses] = useState<{ id: number; name?: string; code?: string }[]>([]);
   const [studyBuddies, setStudyBuddies] = useState<StudyBuddyCard[]>([]);
-
+  const [results, setResults] = useState<GameSessionResultDto[]>([]);
   // Study timer (mirrors Focus page)
   const [time, setTime] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
@@ -66,6 +67,7 @@ const Dashboard = () => {
       quizApi.getCourseStats().then(setCourseStats),
       courseApi.getAll().then(setCourses),
       studyBuddyApi.mine().then(setStudyBuddies),
+      gameSessionApi.getMyResults().then(setResults).catch(() => { }),
     ]);
   }, []);
 
@@ -179,6 +181,11 @@ const Dashboard = () => {
   const longestStreak = todayHabits.length
     ? Math.max(...todayHabits.map((h) => h.streak_current ?? 0))
     : 0;
+
+  const getLastResult = (gameId: number) =>
+    results
+      .filter((r) => r.game_id === gameId)
+      .sort((a, b) => new Date(b.end_time).getTime() - new Date(a.end_time).getTime())[0];
 
   return (
     <div className="min-h-screen p-4 md:p-8">
@@ -430,10 +437,18 @@ const Dashboard = () => {
                     <span className="text-xs text-muted-foreground">{game.subject}</span>
                     <Badge className={`text-xs ${difficultyColor(game.difficulty)}`}>{game.difficulty}</Badge>
                   </div>
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between mb-2">
                     <span className="text-xs text-muted-foreground">Lv. {game.level}</span>
                     <span className="text-xs font-semibold text-primary">+{game.points} SP</span>
                   </div>
+                  {(() => {
+                    const result = getLastResult(game.id);
+                    return result ? (
+                      <div className="text-xs text-center mb-1 text-muted-foreground">
+                        Last: <span className="text-primary font-semibold">{result.score}/{result.max_score}</span>
+                      </div>
+                    ) : null;
+                  })()}
                   <Button size="sm" className="w-full mt-3 gradient-primary border-0 text-xs" onClick={() => setSelectedGame(game)}>
                     Play Now
                   </Button>
@@ -463,32 +478,32 @@ const Dashboard = () => {
                   const dueDateStr = formatDueDate(deadline.due_date);
                   const noDate = dueDateStr === "No date";
                   return (
-                  <div key={deadline.id} className="glass p-4 rounded-2xl hover:shadow-lg transition-shadow">
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        <h3 className="font-semibold text-lg">{deadline.title}</h3>
-                        <p className="text-sm text-muted-foreground">{deadline.course?.code ?? deadline.course?.name ?? ""}</p>
+                    <div key={deadline.id} className="glass p-4 rounded-2xl hover:shadow-lg transition-shadow">
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <h3 className="font-semibold text-lg">{deadline.title}</h3>
+                          <p className="text-sm text-muted-foreground">{deadline.course?.code ?? deadline.course?.name ?? ""}</p>
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                          <Badge className={priorityColor(deadline.priority)}>{deadline.priority}</Badge>
+                          <span className={`text-xs font-medium ${noDate ? "text-muted-foreground" : dueDateStr === "Overdue" ? "text-destructive" : "text-primary"}`}>
+                            {noDate ? "No due date set" : `Due: ${dueDateStr}`}
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex flex-col items-end gap-1">
-                        <Badge className={priorityColor(deadline.priority)}>{deadline.priority}</Badge>
-                        <span className={`text-xs font-medium ${noDate ? "text-muted-foreground" : dueDateStr === "Overdue" ? "text-destructive" : "text-primary"}`}>
-                          {noDate ? "No due date set" : `Due: ${dueDateStr}`}
-                        </span>
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Progress</span>
+                          <span className="font-medium">{pct}%</span>
+                        </div>
+                        <Progress value={pct} className="h-2 bg-muted" />
+                        <p className="text-xs text-muted-foreground">
+                          {deadline.estimated_hours
+                            ? `~${Math.round(deadline.estimated_hours * (1 - pct / 100))}h remaining of ${deadline.estimated_hours}h`
+                            : "No estimate set"}
+                        </p>
                       </div>
                     </div>
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Progress</span>
-                        <span className="font-medium">{pct}%</span>
-                      </div>
-                      <Progress value={pct} className="h-2 bg-muted" />
-                      <p className="text-xs text-muted-foreground">
-                        {deadline.estimated_hours
-                          ? `~${Math.round(deadline.estimated_hours * (1 - pct / 100))}h remaining of ${deadline.estimated_hours}h`
-                          : "No estimate set"}
-                      </p>
-                    </div>
-                  </div>
                   );
                 })
               )}
@@ -634,8 +649,20 @@ const Dashboard = () => {
                 <span className="text-xs font-semibold text-primary">+{selectedGame?.points} SP</span>
               </div>
             </div>
-            <p className="text-xs text-muted-foreground italic">🚧 Game coming soon — stay tuned!</p>
-            <Button className="gradient-primary border-0 w-full" onClick={() => setSelectedGame(null)}>Close</Button>
+            <div className="flex gap-3 w-full">
+              <Button variant="outline" className="flex-1" onClick={() => setSelectedGame(null)}>
+                Close
+              </Button>
+              <Button
+                className="gradient-primary border-0 flex-1"
+                onClick={() => {
+                  setSelectedGame(null);
+                  navigate(`/games/${selectedGame?.id}`);
+                }}
+              >
+                Play Now
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
