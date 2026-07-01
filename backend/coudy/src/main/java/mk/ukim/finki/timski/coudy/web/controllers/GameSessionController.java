@@ -1,14 +1,13 @@
 package mk.ukim.finki.timski.coudy.web.controllers;
 
 import lombok.AllArgsConstructor;
-import mk.ukim.finki.timski.coudy.dto.GameSessionStartDto;
-import mk.ukim.finki.timski.coudy.dto.QuestionDto;
-import mk.ukim.finki.timski.coudy.dto.SubmitAnswerRequestDto;
-import mk.ukim.finki.timski.coudy.dto.SubmitAnswerResponseDto;
+import mk.ukim.finki.timski.coudy.dto.*;
 import mk.ukim.finki.timski.coudy.model.domain.User;
 import mk.ukim.finki.timski.coudy.service.domain.GameSessionService;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/game-sessions")
@@ -51,5 +50,11 @@ public class GameSessionController {
     @GetMapping("/{id}/question")
     public QuestionDto getQuestion(@PathVariable Long id) {
         return gameSessionService.getCurrentQuestion(id);
+    }
+
+    @GetMapping("/my-results")
+    public List<GameSessionResultDto> myResults(Authentication authentication) {
+        User user = (User) authentication.getPrincipal();
+        return gameSessionService.getResultsByUser(user.getUsername());
     }
 }

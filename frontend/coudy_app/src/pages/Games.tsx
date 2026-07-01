@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Gamepad2 } from "lucide-react";
+import gameSessionApi, { GameSessionResultDto } from "@/games/api/gameSessionApi";
 
 const difficultyColor: Record<string, string> = {
   EASY: "bg-green-100 text-green-700",
@@ -18,6 +19,7 @@ const Games = () => {
   const [games, setGames] = useState<GameDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [results, setResults] = useState<GameSessionResultDto[]>([]);
 
   useEffect(() => {
     gameApi
@@ -26,6 +28,17 @@ const Games = () => {
       .catch(() => setError("Failed to load games."))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    gameSessionApi.getMyResults()
+      .then(setResults)
+      .catch(console.error);
+  }, []);
+
+  const getLastResult = (gameId: number) =>
+    results
+      .filter((r) => r.game_id === gameId)
+      .sort((a, b) => new Date(b.end_time).getTime() - new Date(a.end_time).getTime())[0];
 
   if (loading) {
     return (
@@ -54,29 +67,37 @@ const Games = () => {
         {games.length === 0 ? (
           <p className="col-span-full text-center text-muted-foreground">No games available yet.</p>
         ) : (
-          games.map((game) => (
-            <Card key={game.id} className="p-5 hover:shadow-md transition-shadow">
-              <div className="text-4xl mb-3">{game.icon}</div>
-              <h2 className="text-lg font-semibold mb-1">{game.name}</h2>
-              <p className="text-sm text-muted-foreground mb-3">{game.description}</p>
-              <div className="flex items-center gap-2 flex-wrap mb-4">
-                <Badge className={difficultyColor[game.difficulty] ?? ""}>
-                  {game.difficulty}
-                </Badge>
-                <span className="text-xs text-muted-foreground">{game.subject}</span>
-                <span className="ml-auto text-xs font-medium">{game.points} pts</span>
-              </div>
-              <Button
-                className="w-full"
-                onClick={() => {
-                  console.log("game.id:", game.id);
-                  navigate(`/games/${game.id}`);
-                }}
-              >
-                Play
-              </Button>
-            </Card>
-          ))
+          games.map((game) => {
+            const result = getLastResult(game.id);
+            return (
+              <Card key={game.id} className="p-5 hover:shadow-md transition-shadow">
+                <div className="text-4xl mb-3">{game.icon}</div>
+                <h2 className="text-lg font-semibold mb-1">{game.name}</h2>
+                <p className="text-sm text-muted-foreground mb-3">{game.description}</p>
+                <div className="flex items-center gap-2 flex-wrap mb-4">
+                  <Badge className={difficultyColor[game.difficulty] ?? ""}>
+                    {game.difficulty}
+                  </Badge>
+                  <span className="text-xs text-muted-foreground">{game.subject}</span>
+                  <span className="ml-auto text-xs font-medium">{game.points} pts</span>
+                </div>
+                {result && (
+                  <div className="text-xs text-muted-foreground mb-2 text-center">
+                    Last score:{" "}
+                    <span className="text-primary font-semibold">
+                      {result.score}/{result.max_score}
+                    </span>
+                  </div>
+                )}
+                <Button
+                  className="w-full"
+                  onClick={() => navigate(`/games/${game.id}`)}
+                >
+                  Play
+                </Button>
+              </Card>
+            );
+          })
         )}
       </div>
     </div>

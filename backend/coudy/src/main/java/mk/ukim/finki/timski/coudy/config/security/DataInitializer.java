@@ -26,451 +26,311 @@ import java.util.List;
 @RequiredArgsConstructor
 public class DataInitializer implements ApplicationRunner {
 
-    private final UserRepository userRepository;
-    private final DeadlineRepository deadlineRepository;
-    private final GameRepository gameRepository;
-    private final QuizTopicRepository quizTopicRepository;
-    private final PasswordEncoder passwordEncoder;
-    private final QuestionRepository questionRepository;
-    @PersistenceContext
-    private EntityManager entityManager;
+        private final UserRepository userRepository;
+        private final DeadlineRepository deadlineRepository;
+        private final GameRepository gameRepository;
+        private final QuizTopicRepository quizTopicRepository;
+        private final PasswordEncoder passwordEncoder;
+        private final QuestionRepository questionRepository;
+        @PersistenceContext
+        private EntityManager entityManager;
 
-    @Override
-    @Transactional
-    public void run(ApplicationArguments args) {
+        @Override
+        @Transactional
+        public void run(ApplicationArguments args) {
 
-        // Always reload quiz topics in dev so the seeded data stays consistent.
-        if (quizTopicRepository.count() == 0) {
-            try {
-                InputStream is = new ClassPathResource("quiz_dataset.json").getInputStream();
-                List<QuizTopic> topics = new ObjectMapper()
-                        .readValue(is, new TypeReference<List<QuizTopic>>() {});
-                quizTopicRepository.saveAll(topics);
-                System.out.println("  Quiz topics: " + topics.size() + " topics loaded from quiz_dataset.json");
-            } catch (Exception e) {
-                System.err.println("  Failed to load quiz_dataset.json: " + e.getMessage());
-            }
+                // Always reload quiz topics in dev so the seeded data stays consistent.
+                if (quizTopicRepository.count() == 0) {
+                        try {
+                                InputStream is = new ClassPathResource("quiz_dataset.json").getInputStream();
+                                List<QuizTopic> topics = new ObjectMapper()
+                                        .readValue(is, new TypeReference<List<QuizTopic>>() {});
+                                quizTopicRepository.saveAll(topics);
+                                System.out.println("  Quiz topics: " + topics.size() + " topics loaded from quiz_dataset.json");
+                        } catch (Exception e) {
+                                System.err.println("  Failed to load quiz_dataset.json: " + e.getMessage());
+                        }
+                }
+
+                // Games and their questions are seeded independently of the user check below,
+                // and per-game/per-question, so re-running after adding a new game (or new
+                // questions for an existing game) doesn't get silently skipped just because
+                // the "kikis" dev user already exists.
+                seedGamesAndQuestions();
+
+                if (userRepository.findByUsername("kikis").isPresent())
+                {
+                        System.out.println("EXITING DATA INITIALIZER");
+                        return;
+                }
+
+                // ── Users ─────────────────────────────────────────────────────────────
+                User user = new User("kikis", passwordEncoder.encode("password123"), "Kiki", "Test", Role.ROLE_USER);
+                user.setPoints(0);
+                user.setMajor("Computer Science");
+                user.setYear("Junior");
+                user.setStudyStyle("Discussion");
+                user.setAvailability("Evenings");
+                user.setBio("Enjoys algorithm drills, systems topics, and collaborative study sessions.");
+                userRepository.save(user);
+
+                User admin = new User("admin", passwordEncoder.encode("admin123"), "Admin", "User", Role.ROLE_ADMIN);
+                admin.setPoints(0);
+                admin.setMajor("Computer Science");
+                admin.setYear("Staff");
+                admin.setStudyStyle("Teaching");
+                admin.setAvailability("Flexible");
+                admin.setBio("Platform administrator and occasional study mentor.");
+                userRepository.save(admin);
+
+                // ── Courses ───────────────────────────────────────────────────────────
+                Course intSys = new Course(); intSys.setCode("IS101"); intSys.setName("Integrated Systems"); intSys.setUser(user); entityManager.persist(intSys);
+                Course soa = new Course(); soa.setCode("SOA201"); soa.setName("Service Oriented Architecture"); soa.setUser(user); entityManager.persist(soa);
+                Course st = new Course(); st.setCode("ST301"); st.setName("Software Testing"); st.setUser(user); entityManager.persist(st);
+                Course cd = new Course(); cd.setCode("CD401"); cd.setName("CI/CD"); cd.setUser(user); entityManager.persist(cd);
+                Course ap = new Course(); ap.setCode("AP501"); ap.setName("Advanced Programming"); ap.setUser(user); entityManager.persist(ap);
+
+                User maria = new User("maria", passwordEncoder.encode("password123"), "Maria", "Gonzales", Role.ROLE_USER);
+                maria.setPoints(320);
+                maria.setMajor("Mathematics");
+                maria.setYear("Sophomore");
+                maria.setStudyStyle("Problem Solving");
+                maria.setAvailability("Afternoons");
+                maria.setBio("Loves calculus, proof practice, and quick feedback loops.");
+                entityManager.persist(maria);
+
+                User nikola = new User("nikola", passwordEncoder.encode("password123"), "Nikola", "Petrov", Role.ROLE_USER);
+                nikola.setPoints(280);
+                nikola.setMajor("Physics");
+                nikola.setYear("Senior");
+                nikola.setStudyStyle("Teaching");
+                nikola.setAvailability("Evenings");
+                nikola.setBio("Physics tutor who likes whiteboard sessions and exam prep.");
+                entityManager.persist(nikola);
+
+                User ana = new User("ana", passwordEncoder.encode("password123"), "Ana", "Ilic", Role.ROLE_USER);
+                ana.setPoints(210);
+                ana.setMajor("Computer Science");
+                ana.setYear("Junior");
+                ana.setStudyStyle("Discussion");
+                ana.setAvailability("Flexible");
+                ana.setBio("Frontend and algorithms are the favorite combo.");
+                entityManager.persist(ana);
+
+                Course m1 = new Course(); m1.setCode("MTH201"); m1.setName("Linear Algebra"); m1.setUser(maria); entityManager.persist(m1);
+                Course m2 = new Course(); m2.setCode("MTH202"); m2.setName("Calculus II"); m2.setUser(maria); entityManager.persist(m2);
+                Course n1 = new Course(); n1.setCode("PHY301"); n1.setName("Thermodynamics"); n1.setUser(nikola); entityManager.persist(n1);
+                Course n2 = new Course(); n2.setCode("PHY302"); n2.setName("Quantum Mechanics"); n2.setUser(nikola); entityManager.persist(n2);
+                Course a1 = new Course(); a1.setCode("CS302"); a1.setName("Algorithms"); a1.setUser(ana); entityManager.persist(a1);
+                Course a2 = new Course(); a2.setCode("CS303"); a2.setName("Web Dev"); a2.setUser(ana); entityManager.persist(a2);
+
+                entityManager.flush();
+
+                // ── Deadlines ────────────────────────────────────────────────────────
+                LocalDateTime now = LocalDateTime.now();
+
+                Deadline d1 = new Deadline();
+                d1.setUser(user);
+                d1.setCourse(soa);
+                d1.setTitle("SOA Assignment");
+                d1.setDescription("Strategic DDD homework");
+                d1.setDueDate(now.plusDays(3));
+                d1.setEstimatedHours(4);
+                d1.setPriority(Priority.HIGH);
+                d1.setCompletionPercentage(20);
+                d1.setStatus(DeadlineStatus.IN_PROGRESS);
+                d1.setCreatedAt(now);
+                deadlineRepository.save(d1);
+
+                Deadline d2 = new Deadline();
+                d2.setUser(user);
+                d2.setCourse(st);
+                d2.setTitle("Testing Lab");
+                d2.setDescription("Graph coverage exercises");
+                d2.setDueDate(now.plusDays(5));
+                d2.setEstimatedHours(6);
+                d2.setPriority(Priority.CRITICAL);
+                d2.setCompletionPercentage(0);
+                d2.setStatus(DeadlineStatus.NOT_STARTED);
+                d2.setCreatedAt(now);
+                deadlineRepository.save(d2);
+
+                Deadline d3 = new Deadline();
+                d3.setUser(user);
+                d3.setCourse(ap);
+                d3.setTitle("Java Streams Project");
+                d3.setDescription("Implement functional pipelines");
+                d3.setDueDate(now.plusDays(6));
+                d3.setEstimatedHours(8);
+                d3.setPriority(Priority.MEDIUM);
+                d3.setCompletionPercentage(50);
+                d3.setStatus(DeadlineStatus.IN_PROGRESS);
+                d3.setCreatedAt(now);
+                deadlineRepository.save(d3);
+
+
+
+
+
+                StudyBuddy buddy1 = new StudyBuddy();
+                buddy1.setUser1(user);
+                buddy1.setUser2(ana);
+                buddy1.setMatchScore(94);
+                buddy1.setStatus(BuddyStatus.ACTIVE);
+                buddy1.setMatchedAt(now.minusDays(4));
+                buddy1.setSessionCount(3);
+                entityManager.persist(buddy1);
+
+                StudyBuddy buddy2 = new StudyBuddy();
+                buddy2.setUser1(user);
+                buddy2.setUser2(maria);
+                buddy2.setMatchScore(87);
+                buddy2.setStatus(BuddyStatus.ACTIVE);
+                buddy2.setMatchedAt(now.minusDays(8));
+                buddy2.setSessionCount(5);
+                entityManager.persist(buddy2);
+
+                StudyBuddy buddy3 = new StudyBuddy();
+                buddy3.setUser1(user);
+                buddy3.setUser2(nikola);
+                buddy3.setMatchScore(82);
+                buddy3.setStatus(BuddyStatus.PENDING);
+                buddy3.setMatchedAt(now.minusDays(1));
+                buddy3.setSessionCount(0);
+                entityManager.persist(buddy3);
+
+                BuddySession session1 = new BuddySession();
+                session1.setStudyBuddy(buddy1);
+                session1.setScheduledTime(now.plusHours(2));
+                session1.setLocation("Library Room 2");
+                session1.setDurationMinutes(90);
+                session1.setAttendedUser1(false);
+                session1.setAttendedUser2(false);
+                session1.setNotes("Algorithms review");
+                session1.setStatus(SessionStatus.SCHEDULED);
+                entityManager.persist(session1);
+
+                BuddySession session2 = new BuddySession();
+                session2.setStudyBuddy(buddy2);
+                session2.setScheduledTime(now.plusDays(1).withHour(16).withMinute(0));
+                session2.setLocation("Campus cafe");
+                session2.setDurationMinutes(60);
+                session2.setAttendedUser1(true);
+                session2.setAttendedUser2(true);
+                session2.setRatingUser1(5);
+                session2.setRatingUser2(5);
+                session2.setNotes("Calculus practice");
+                session2.setStatus(SessionStatus.COMPLETED);
+                entityManager.persist(session2);
+
+                BuddyMessage message1 = new BuddyMessage();
+                message1.setStudyBuddy(buddy1);
+                message1.setSender(user);
+                message1.setContent("Are you free to review sorting algorithms later?");
+                message1.setSentAt(now.minusHours(3));
+                entityManager.persist(message1);
+
+                BuddyMessage message2 = new BuddyMessage();
+                message2.setStudyBuddy(buddy1);
+                message2.setSender(ana);
+                message2.setContent("Yes, let's do 7 PM.");
+                message2.setSentAt(now.minusHours(2));
+                entityManager.persist(message2);
+
+                System.out.println("=================================================");
+                System.out.println("  Dev data initialized:");
+                System.out.println("  Users  : kikis / password123  (ROLE_USER)");
+                System.out.println("           admin / admin123     (ROLE_ADMIN)");
+                System.out.println("  Courses: MATH101, CS202, CS301");
+                System.out.println("  Deadlines: 3 active deadlines for kikis");
+                System.out.println("  Games: 6 educational games seeded, each with questions");
+                System.out.println("=================================================");
         }
 
-        if (userRepository.findByUsername("kikis").isPresent())
-        {
-            System.out.println("EXITING DATA INITIALIZER");
-            return;
+        // Finds each game by name (creating it if missing) and backfills its questions
+        // if it has none, so partial/broken seed state from earlier runs self-heals
+        // instead of being permanently skipped by the "kikis" user guard above.
+        private void seedGamesAndQuestions() {
+                Game g1 = findOrCreateGame("Math Blitz", "Solve algebra and arithmetic problems under time pressure to earn bonus points.",
+                        "Mathematics", "➗", 100, 1, Difficulty.EASY, "Quiz");
+                seedQuestionsIfMissing(g1, List.of(
+                        newQuestion(g1, "3 + 2 = ?", List.of("3", "4", "5"), "4"),
+                        newQuestion(g1, "10 - 7 = ?", List.of("2", "3", "4"), "3"),
+                        newQuestion(g1, "5 * 6 = ?", List.of("11", "30", "56"), "30"),
+                        newQuestion(g1, "5 * 6 = ?", List.of("11", "30", "56"), "30")
+                ));
+
+                Game g2 = findOrCreateGame("Code Duel", "Race against the clock to fix bugs and write functions in Java or Python.",
+                        "Computer Science", "💻", 200, 3, Difficulty.HARD, "Coding");
+                seedQuestionsIfMissing(g2, List.of(
+                        newQuestion(g2, "Which keyword declares a constant in Java?", List.of("var", "final", "let"), "final"),
+                        newQuestion(g2, "What does JVM stand for?", List.of("Java Virtual Machine", "Java Variable Method", "Just Virtual Memory"), "Java Virtual Machine"),
+                        newQuestion(g2, "Which data structure uses FIFO order?", List.of("Stack", "Queue", "Tree"), "Queue")
+                ));
+
+                Game g3 = findOrCreateGame("History Hunt", "Match historical events to dates and figures in this fast-paced trivia game.",
+                        "History", "🏛️", 150, 2, Difficulty.MEDIUM, "Trivia");
+                seedQuestionsIfMissing(g3, List.of(
+                        newQuestion(g3, "In which year did World War II end?", List.of("1943", "1945", "1950"), "1945"),
+                        newQuestion(g3, "Who was the first President of the United States?", List.of("Thomas Jefferson", "George Washington", "Abraham Lincoln"), "George Washington"),
+                        newQuestion(g3, "The Great Wall is located in which country?", List.of("China", "India", "Egypt"), "China")
+                ));
+
+                Game g4 = findOrCreateGame("Science Lab", "Run virtual experiments and answer questions about chemistry and physics.",
+                        "Science", "🔬", 175, 2, Difficulty.MEDIUM, "Simulation");
+                seedQuestionsIfMissing(g4, List.of(
+                        newQuestion(g4, "What is the chemical symbol for water?", List.of("H2O", "CO2", "O2"), "H2O"),
+                        newQuestion(g4, "What force pulls objects toward the Earth?", List.of("Magnetism", "Gravity", "Friction"), "Gravity"),
+                        newQuestion(g4, "How many bones are in the adult human body?", List.of("206", "150", "300"), "206")
+                ));
+
+                Game g5 = findOrCreateGame("Word Wizard", "Expand your vocabulary by unscrambling words and solving language puzzles.",
+                        "Language Arts", "📝", 120, 1, Difficulty.EASY, "Puzzle");
+                seedQuestionsIfMissing(g5, List.of(
+                        newQuestion(g5, "Which word is a synonym for \"happy\"?", List.of("Joyful", "Angry", "Tired"), "Joyful"),
+                        newQuestion(g5, "What is the plural of \"child\"?", List.of("Childs", "Children", "Childes"), "Children"),
+                        newQuestion(g5, "Which word means the opposite of \"ancient\"?", List.of("Modern", "Old", "Historic"), "Modern")
+                ));
+
+                Game g6 = findOrCreateGame("Logic Master", "Challenge your critical thinking with logic puzzles and reasoning problems.",
+                        "Philosophy", "🧠", 250, 4, Difficulty.EXPERT, "Puzzle");
+                seedQuestionsIfMissing(g6, List.of(
+                        newQuestion(g6, "If all cats are animals, and Tom is a cat, then Tom is a...?", List.of("Plant", "Animal", "Mineral"), "Animal"),
+                        newQuestion(g6, "What comes next in the sequence: 2, 4, 8, 16, ?", List.of("18", "24", "32"), "32"),
+                        newQuestion(g6, "A statement that is either true or false is called a...?", List.of("Proposition", "Question", "Opinion"), "Proposition")
+                ));
         }
 
-        // ── Users ─────────────────────────────────────────────────────────────
-        User user = new User("kikis", passwordEncoder.encode("password123"), "Kiki", "Test", Role.ROLE_USER);
-        user.setPoints(0);
-        user.setMajor("Computer Science");
-        user.setYear("Junior");
-        user.setStudyStyle("Discussion");
-        user.setAvailability("Evenings");
-        user.setBio("Enjoys algorithm drills, systems topics, and collaborative study sessions.");
-        userRepository.save(user);
+        private Question newQuestion(Game game, String text, List<String> options, String correctAnswer) {
+                Question question = new Question();
+                question.setGame(game);
+                question.setText(text);
+                question.setOptions(options);
+                question.setCorrectAnswer(correctAnswer);
+                question.setQuestionType(QuestionType.SINGLE_CHOICE);
+                return question;
+        }
 
-        User admin = new User("admin", passwordEncoder.encode("admin123"), "Admin", "User", Role.ROLE_ADMIN);
-        admin.setPoints(0);
-        admin.setMajor("Computer Science");
-        admin.setYear("Staff");
-        admin.setStudyStyle("Teaching");
-        admin.setAvailability("Flexible");
-        admin.setBio("Platform administrator and occasional study mentor.");
-        userRepository.save(admin);
+        private Game findOrCreateGame(String name, String description, String subject, String icon,
+                                      int points, int level, Difficulty difficulty, String category) {
+                return gameRepository.findByName(name).orElseGet(() -> {
+                        Game game = new Game();
+                        game.setName(name);
+                        game.setDescription(description);
+                        game.setSubject(subject);
+                        game.setIcon(icon);
+                        game.setPoints(points);
+                        game.setLevel(level);
+                        game.setDifficulty(difficulty);
+                        game.setCategory(category);
+                        game.setActive(true);
+                        return gameRepository.save(game);
+                });
+        }
 
-        // ── Courses ───────────────────────────────────────────────────────────
-        Course intSys = new Course(); intSys.setCode("IS101"); intSys.setName("Integrated Systems"); intSys.setUser(user); entityManager.persist(intSys);
-        Course soa = new Course(); soa.setCode("SOA201"); soa.setName("Service Oriented Architecture"); soa.setUser(user); entityManager.persist(soa);
-        Course st = new Course(); st.setCode("ST301"); st.setName("Software Testing"); st.setUser(user); entityManager.persist(st);
-        Course cd = new Course(); cd.setCode("CD401"); cd.setName("CI/CD"); cd.setUser(user); entityManager.persist(cd);
-        Course ap = new Course(); ap.setCode("AP501"); ap.setName("Advanced Programming"); ap.setUser(user); entityManager.persist(ap);
-
-        User maria = new User("maria", passwordEncoder.encode("password123"), "Maria", "Gonzales", Role.ROLE_USER);
-        maria.setPoints(320);
-        maria.setMajor("Mathematics");
-        maria.setYear("Sophomore");
-        maria.setStudyStyle("Problem Solving");
-        maria.setAvailability("Afternoons");
-        maria.setBio("Loves calculus, proof practice, and quick feedback loops.");
-        entityManager.persist(maria);
-
-        User nikola = new User("nikola", passwordEncoder.encode("password123"), "Nikola", "Petrov", Role.ROLE_USER);
-        nikola.setPoints(280);
-        nikola.setMajor("Physics");
-        nikola.setYear("Senior");
-        nikola.setStudyStyle("Teaching");
-        nikola.setAvailability("Evenings");
-        nikola.setBio("Physics tutor who likes whiteboard sessions and exam prep.");
-        entityManager.persist(nikola);
-
-        User ana = new User("ana", passwordEncoder.encode("password123"), "Ana", "Ilic", Role.ROLE_USER);
-        ana.setPoints(210);
-        ana.setMajor("Computer Science");
-        ana.setYear("Junior");
-        ana.setStudyStyle("Discussion");
-        ana.setAvailability("Flexible");
-        ana.setBio("Frontend and algorithms are the favorite combo.");
-        entityManager.persist(ana);
-
-        Course m1 = new Course(); m1.setCode("MTH201"); m1.setName("Linear Algebra"); m1.setUser(maria); entityManager.persist(m1);
-        Course m2 = new Course(); m2.setCode("MTH202"); m2.setName("Calculus II"); m2.setUser(maria); entityManager.persist(m2);
-        Course n1 = new Course(); n1.setCode("PHY301"); n1.setName("Thermodynamics"); n1.setUser(nikola); entityManager.persist(n1);
-        Course n2 = new Course(); n2.setCode("PHY302"); n2.setName("Quantum Mechanics"); n2.setUser(nikola); entityManager.persist(n2);
-        Course a1 = new Course(); a1.setCode("CS302"); a1.setName("Algorithms"); a1.setUser(ana); entityManager.persist(a1);
-        Course a2 = new Course(); a2.setCode("CS303"); a2.setName("Web Dev"); a2.setUser(ana); entityManager.persist(a2);
-
-        entityManager.flush();
-
-        // ── Deadlines ────────────────────────────────────────────────────────
-        LocalDateTime now = LocalDateTime.now();
-
-        Deadline d1 = new Deadline();
-        d1.setUser(user);
-        d1.setCourse(soa);
-        d1.setTitle("SOA Assignment");
-        d1.setDescription("Strategic DDD homework");
-        d1.setDueDate(now.plusDays(3));
-        d1.setEstimatedHours(4);
-        d1.setPriority(Priority.HIGH);
-        d1.setCompletionPercentage(20);
-        d1.setStatus(DeadlineStatus.IN_PROGRESS);
-        d1.setCreatedAt(now);
-        deadlineRepository.save(d1);
-
-        Deadline d2 = new Deadline();
-        d2.setUser(user);
-        d2.setCourse(st);
-        d2.setTitle("Testing Lab");
-        d2.setDescription("Graph coverage exercises");
-        d2.setDueDate(now.plusDays(5));
-        d2.setEstimatedHours(6);
-        d2.setPriority(Priority.CRITICAL);
-        d2.setCompletionPercentage(0);
-        d2.setStatus(DeadlineStatus.NOT_STARTED);
-        d2.setCreatedAt(now);
-        deadlineRepository.save(d2);
-
-        Deadline d3 = new Deadline();
-        d3.setUser(user);
-        d3.setCourse(ap);
-        d3.setTitle("Java Streams Project");
-        d3.setDescription("Implement functional pipelines");
-        d3.setDueDate(now.plusDays(6));
-        d3.setEstimatedHours(8);
-        d3.setPriority(Priority.MEDIUM);
-        d3.setCompletionPercentage(50);
-        d3.setStatus(DeadlineStatus.IN_PROGRESS);
-        d3.setCreatedAt(now);
-        deadlineRepository.save(d3);
-
-
-
-
-
-        StudyBuddy buddy1 = new StudyBuddy();
-        buddy1.setUser1(user);
-        buddy1.setUser2(ana);
-        buddy1.setMatchScore(94);
-        buddy1.setStatus(BuddyStatus.ACTIVE);
-        buddy1.setMatchedAt(now.minusDays(4));
-        buddy1.setSessionCount(3);
-        entityManager.persist(buddy1);
-
-        StudyBuddy buddy2 = new StudyBuddy();
-        buddy2.setUser1(user);
-        buddy2.setUser2(maria);
-        buddy2.setMatchScore(87);
-        buddy2.setStatus(BuddyStatus.ACTIVE);
-        buddy2.setMatchedAt(now.minusDays(8));
-        buddy2.setSessionCount(5);
-        entityManager.persist(buddy2);
-
-        StudyBuddy buddy3 = new StudyBuddy();
-        buddy3.setUser1(user);
-        buddy3.setUser2(nikola);
-        buddy3.setMatchScore(82);
-        buddy3.setStatus(BuddyStatus.PENDING);
-        buddy3.setMatchedAt(now.minusDays(1));
-        buddy3.setSessionCount(0);
-        entityManager.persist(buddy3);
-
-        BuddySession session1 = new BuddySession();
-        session1.setStudyBuddy(buddy1);
-        session1.setScheduledTime(now.plusHours(2));
-        session1.setLocation("Library Room 2");
-        session1.setDurationMinutes(90);
-        session1.setAttendedUser1(false);
-        session1.setAttendedUser2(false);
-        session1.setNotes("Algorithms review");
-        session1.setStatus(SessionStatus.SCHEDULED);
-        entityManager.persist(session1);
-
-        BuddySession session2 = new BuddySession();
-        session2.setStudyBuddy(buddy2);
-        session2.setScheduledTime(now.plusDays(1).withHour(16).withMinute(0));
-        session2.setLocation("Campus cafe");
-        session2.setDurationMinutes(60);
-        session2.setAttendedUser1(true);
-        session2.setAttendedUser2(true);
-        session2.setRatingUser1(5);
-        session2.setRatingUser2(5);
-        session2.setNotes("Calculus practice");
-        session2.setStatus(SessionStatus.COMPLETED);
-        entityManager.persist(session2);
-
-        BuddyMessage message1 = new BuddyMessage();
-        message1.setStudyBuddy(buddy1);
-        message1.setSender(user);
-        message1.setContent("Are you free to review sorting algorithms later?");
-        message1.setSentAt(now.minusHours(3));
-        entityManager.persist(message1);
-
-        BuddyMessage message2 = new BuddyMessage();
-        message2.setStudyBuddy(buddy1);
-        message2.setSender(ana);
-        message2.setContent("Yes, let's do 7 PM.");
-        message2.setSentAt(now.minusHours(2));
-        entityManager.persist(message2);
-
-        // ── Educational Games ─────────────────────────────────────────────────
-        Game g1 = new Game();
-        g1.setName("Math Blitz");
-        g1.setDescription("Solve algebra and arithmetic problems under time pressure to earn bonus points.");
-        g1.setSubject("Mathematics");
-        g1.setIcon("➗");
-        g1.setPoints(100);
-        g1.setLevel(1);
-        g1.setDifficulty(Difficulty.EASY);
-        g1.setCategory("Quiz");
-        g1.setActive(true);
-        gameRepository.save(g1);
-
-        Game g2 = new Game();
-        g2.setName("Code Duel");
-        g2.setDescription("Race against the clock to fix bugs and write functions in Java or Python.");
-        g2.setSubject("Computer Science");
-        g2.setIcon("💻");
-        g2.setPoints(200);
-        g2.setLevel(3);
-        g2.setDifficulty(Difficulty.HARD);
-        g2.setCategory("Coding");
-        g2.setActive(true);
-        gameRepository.save(g2);
-
-        Game g3 = new Game();
-        g3.setName("History Hunt");
-        g3.setDescription("Match historical events to dates and figures in this fast-paced trivia game.");
-        g3.setSubject("History");
-        g3.setIcon("🏛️");
-        g3.setPoints(150);
-        g3.setLevel(2);
-        g3.setDifficulty(Difficulty.MEDIUM);
-        g3.setCategory("Trivia");
-        g3.setActive(true);
-        gameRepository.save(g3);
-
-        Game g4 = new Game();
-        g4.setName("Science Lab");
-        g4.setDescription("Run virtual experiments and answer questions about chemistry and physics.");
-        g4.setSubject("Science");
-        g4.setIcon("🔬");
-        g4.setPoints(175);
-        g4.setLevel(2);
-        g4.setDifficulty(Difficulty.MEDIUM);
-        g4.setCategory("Simulation");
-        g4.setActive(true);
-        gameRepository.save(g4);
-
-        Game g5 = new Game();
-        g5.setName("Word Wizard");
-        g5.setDescription("Expand your vocabulary by unscrambling words and solving language puzzles.");
-        g5.setSubject("Language Arts");
-        g5.setIcon("📝");
-        g5.setPoints(120);
-        g5.setLevel(1);
-        g5.setDifficulty(Difficulty.EASY);
-        g5.setCategory("Puzzle");
-        g5.setActive(true);
-        gameRepository.save(g5);
-
-        Game g6 = new Game();
-        g6.setName("Logic Master");
-        g6.setDescription("Challenge your critical thinking with logic puzzles and reasoning problems.");
-        g6.setSubject("Philosophy");
-        g6.setIcon("🧠");
-        g6.setPoints(250);
-        g6.setLevel(4);
-        g6.setDifficulty(Difficulty.EXPERT);
-        g6.setCategory("Puzzle");
-        g6.setActive(true);
-        gameRepository.save(g6);
-
-
-
-        //QUESTIONS
-        Question q1 = new Question();
-        q1.setGame(g1);
-        q1.setText("3 + 2 = ?");
-        q1.setOptions(List.of("3", "4", "5"));
-        q1.setCorrectAnswer("4");
-        q1.setQuestionType(QuestionType.SINGLE_CHOICE);
-        questionRepository.save(q1);
-
-        Question q2 = new Question();
-        q2.setGame(g1);
-        q2.setText("10 - 7 = ?");
-        q2.setOptions(List.of("2", "3", "4"));
-        q2.setCorrectAnswer("3");
-        q2.setQuestionType(QuestionType.SINGLE_CHOICE);
-        questionRepository.save(q2);
-
-        Question q3 = new Question();
-        q3.setGame(g1);
-        q3.setText("5 * 6 = ?");
-        q3.setOptions(List.of("11", "30", "56"));
-        q3.setCorrectAnswer("30");
-        q3.setQuestionType(QuestionType.SINGLE_CHOICE);
-        questionRepository.save(q3);
-
-        Question q4 = new Question();
-        q4.setGame(g1);
-        q4.setText("5 * 6 = ?");
-        q4.setOptions(List.of("11", "30", "56"));
-        q4.setCorrectAnswer("30");
-        q4.setQuestionType(QuestionType.SINGLE_CHOICE);
-        questionRepository.save(q4);
-
-        // Code Duel (g2)
-        Question q5 = new Question();
-        q5.setGame(g2);
-        q5.setText("Which keyword declares a constant in Java?");
-        q5.setOptions(List.of("var", "final", "let"));
-        q5.setCorrectAnswer("final");
-        q5.setQuestionType(QuestionType.SINGLE_CHOICE);
-        questionRepository.save(q5);
-
-        Question q6 = new Question();
-        q6.setGame(g2);
-        q6.setText("What does JVM stand for?");
-        q6.setOptions(List.of("Java Virtual Machine", "Java Variable Method", "Just Virtual Memory"));
-        q6.setCorrectAnswer("Java Virtual Machine");
-        q6.setQuestionType(QuestionType.SINGLE_CHOICE);
-        questionRepository.save(q6);
-
-        Question q7 = new Question();
-        q7.setGame(g2);
-        q7.setText("Which data structure uses FIFO order?");
-        q7.setOptions(List.of("Stack", "Queue", "Tree"));
-        q7.setCorrectAnswer("Queue");
-        q7.setQuestionType(QuestionType.SINGLE_CHOICE);
-        questionRepository.save(q7);
-
-        // History Hunt (g3)
-        Question q8 = new Question();
-        q8.setGame(g3);
-        q8.setText("In which year did World War II end?");
-        q8.setOptions(List.of("1943", "1945", "1950"));
-        q8.setCorrectAnswer("1945");
-        q8.setQuestionType(QuestionType.SINGLE_CHOICE);
-        questionRepository.save(q8);
-
-        Question q9 = new Question();
-        q9.setGame(g3);
-        q9.setText("Who was the first President of the United States?");
-        q9.setOptions(List.of("Thomas Jefferson", "George Washington", "Abraham Lincoln"));
-        q9.setCorrectAnswer("George Washington");
-        q9.setQuestionType(QuestionType.SINGLE_CHOICE);
-        questionRepository.save(q9);
-
-        Question q10 = new Question();
-        q10.setGame(g3);
-        q10.setText("The Great Wall is located in which country?");
-        q10.setOptions(List.of("China", "India", "Egypt"));
-        q10.setCorrectAnswer("China");
-        q10.setQuestionType(QuestionType.SINGLE_CHOICE);
-        questionRepository.save(q10);
-
-        // Science Lab (g4)
-        Question q11 = new Question();
-        q11.setGame(g4);
-        q11.setText("What is the chemical symbol for water?");
-        q11.setOptions(List.of("H2O", "CO2", "O2"));
-        q11.setCorrectAnswer("H2O");
-        q11.setQuestionType(QuestionType.SINGLE_CHOICE);
-        questionRepository.save(q11);
-
-        Question q12 = new Question();
-        q12.setGame(g4);
-        q12.setText("What force pulls objects toward the Earth?");
-        q12.setOptions(List.of("Magnetism", "Gravity", "Friction"));
-        q12.setCorrectAnswer("Gravity");
-        q12.setQuestionType(QuestionType.SINGLE_CHOICE);
-        questionRepository.save(q12);
-
-        Question q13 = new Question();
-        q13.setGame(g4);
-        q13.setText("How many bones are in the adult human body?");
-        q13.setOptions(List.of("206", "150", "300"));
-        q13.setCorrectAnswer("206");
-        q13.setQuestionType(QuestionType.SINGLE_CHOICE);
-        questionRepository.save(q13);
-
-        // Word Wizard (g5)
-        Question q14 = new Question();
-        q14.setGame(g5);
-        q14.setText("Which word is a synonym for \"happy\"?");
-        q14.setOptions(List.of("Joyful", "Angry", "Tired"));
-        q14.setCorrectAnswer("Joyful");
-        q14.setQuestionType(QuestionType.SINGLE_CHOICE);
-        questionRepository.save(q14);
-
-        Question q15 = new Question();
-        q15.setGame(g5);
-        q15.setText("What is the plural of \"child\"?");
-        q15.setOptions(List.of("Childs", "Children", "Childes"));
-        q15.setCorrectAnswer("Children");
-        q15.setQuestionType(QuestionType.SINGLE_CHOICE);
-        questionRepository.save(q15);
-
-        Question q16 = new Question();
-        q16.setGame(g5);
-        q16.setText("Which word means the opposite of \"ancient\"?");
-        q16.setOptions(List.of("Modern", "Old", "Historic"));
-        q16.setCorrectAnswer("Modern");
-        q16.setQuestionType(QuestionType.SINGLE_CHOICE);
-        questionRepository.save(q16);
-
-        // Logic Master (g6)
-        Question q17 = new Question();
-        q17.setGame(g6);
-        q17.setText("If all cats are animals, and Tom is a cat, then Tom is a...?");
-        q17.setOptions(List.of("Plant", "Animal", "Mineral"));
-        q17.setCorrectAnswer("Animal");
-        q17.setQuestionType(QuestionType.SINGLE_CHOICE);
-        questionRepository.save(q17);
-
-        Question q18 = new Question();
-        q18.setGame(g6);
-        q18.setText("What comes next in the sequence: 2, 4, 8, 16, ?");
-        q18.setOptions(List.of("18", "24", "32"));
-        q18.setCorrectAnswer("32");
-        q18.setQuestionType(QuestionType.SINGLE_CHOICE);
-        questionRepository.save(q18);
-
-        Question q19 = new Question();
-        q19.setGame(g6);
-        q19.setText("A statement that is either true or false is called a...?");
-        q19.setOptions(List.of("Proposition", "Question", "Opinion"));
-        q19.setCorrectAnswer("Proposition");
-        q19.setQuestionType(QuestionType.SINGLE_CHOICE);
-        questionRepository.save(q19);
-
-        System.out.println("=================================================");
-        System.out.println("  Dev data initialized:");
-        System.out.println("  Users  : kikis / password123  (ROLE_USER)");
-        System.out.println("           admin / admin123     (ROLE_ADMIN)");
-        System.out.println("  Courses: MATH101, CS202, CS301");
-        System.out.println("  Deadlines: 3 active deadlines for kikis");
-        System.out.println("  Games: 6 educational games seeded, each with questions");
-        System.out.println("=================================================");
-    }
+        private void seedQuestionsIfMissing(Game game, List<Question> questions) {
+                if (questionRepository.findAllByGameId(game.getId()).isEmpty()) {
+                        questionRepository.saveAll(questions);
+                }
+        }
 }

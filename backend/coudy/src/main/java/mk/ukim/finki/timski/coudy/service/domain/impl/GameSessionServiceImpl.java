@@ -1,6 +1,7 @@
 package mk.ukim.finki.timski.coudy.service.domain.impl;
 
 import lombok.AllArgsConstructor;
+import mk.ukim.finki.timski.coudy.dto.GameSessionResultDto;
 import mk.ukim.finki.timski.coudy.dto.QuestionDto;
 import mk.ukim.finki.timski.coudy.dto.SubmitAnswerResponseDto;
 import mk.ukim.finki.timski.coudy.model.domain.Game;
@@ -148,5 +149,24 @@ public class GameSessionServiceImpl implements GameSessionService {
                 q.getOptions(),
                 q.getQuestionType()
         );
+    }
+
+    @Override
+    public List<GameSessionResultDto> getResultsByUser(String username) {
+        return gameSessionRepository
+                .findByUserUsernameAndStatus(username, GameStatus.FINISHED)
+                .stream()
+                .map(s -> {
+                    int maxScore = questionRepo.findAllByGameId(s.getGame().getId()).size()
+                            * s.getGame().getPoints();
+                    return new GameSessionResultDto(
+                            s.getGame().getId(),
+                            s.getGame().getName(),
+                            s.getScore(),
+                            maxScore,
+                            s.getEndTime()
+                    );
+                })
+                .toList();
     }
 }
