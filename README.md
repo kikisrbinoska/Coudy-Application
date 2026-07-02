@@ -8,43 +8,46 @@ Coudy is a comprehensive student productivity platform that combines study partn
 
 ## Features
 
-### Study Buddy System (Discord-Style)
-- Connect with other students through subject-organized channels
-- Each subject has its own color and role system: **Mentor**, **Beginner**, **Expert**
-- Click **"Call a Partner"** to instantly start a video study session
-- Earn **digital certificates** upon completing courses — shareable on your profile
+### Study Buddy System
+- **Discover** tab: browse recommended study partners with a computed match score, filter by subject/course, and send connection requests
+- **Requests** tab: accept/decline incoming requests, withdraw sent requests
+- **My Buddies** tab: message connected buddies, view unread counts, and request study sessions (paste a Teams/Zoom/Meet link) — sessions go through a request → accept/decline → join flow
 
-### AI-Powered Schedule Generation
-- Generate personalized study schedules using Claude AI
-- Ombre color gradients represent study intensity — darker shades for intense sessions, lighter for relaxed periods
-- Adapts to your workload, deadlines, and habits
+### Study Schedule Generation
+- Generates a personalized weekly study schedule from your deadlines and available time slots using a rule-based urgency algorithm (`daysLeft / hoursNeeded`) — no external AI call
+- Ombre color gradients represent study intensity per block — darker shades for urgent/intense sessions, lighter for relaxed periods
+- Tracks adherence (did you follow the plan?) with history over past weeks, and shows a weekly workload summary (light/moderate/heavy)
 
 ### Timers & Study Tracking
-- Automatic tracking of time spent studying, broken down by subject
-- GitHub-style activity heatmap — each day is colored based on your productivity level
+- Focus timer (count-up stopwatch) with Start/Pause/Stop & Save, task list, optional background music, and theme selection
+- Automatic tracking of time spent studying; awards SyncPoints (10 SP per minute)
+- GitHub-style activity heatmap — each day is colored based on minutes studied
 - Detailed statistics and session history
 
 ### Deadline Management
 - Track all upcoming assignments, exams, and deadlines
-- Color-coded urgency levels and course associations
+- Color-coded priority levels (Low/Medium/High/Critical) and course associations
+- Completion percentage tracking per deadline
 
 ### Habit Tracking
-- Build and monitor daily study habits
-- Log habit completions and view streaks over time
+- Build and monitor daily/weekly habits by category (Academic, Wellness, Life Balance)
+- Log habit completions and view current/longest streaks
+- Weekly completion summary chart
 
 ### Gamification
-- Earn **SyncPoints** for productive study sessions, completing habits, and finishing courses
-- Level up, unlock **achievements** and **badges**
-- Interactive games to keep learning engaging
+- Earn **SyncPoints** for study sessions, habits, and educational games
+- Level up (500 SP per level) and unlock **achievements** based on real usage stats
+- Play built-in **educational games** — multiple-choice question sessions with live scoring and a results history
+
+### Courses & Quizzes
+- Create courses and upload PDF/PowerPoint slides
+- Quiz questions are auto-generated from slide content via an AI model (with a deterministic fallback generator if the AI call fails)
+- Track quiz performance per course/topic
 
 ### Profile & Productivity Insights
-- Personalized dashboard with total points, level, badges, and statistics
-- AI-generated insights on your peak productivity hours and learning patterns
-- Personalized tips based on your study behavior
-
-### Quizzes
-- AI-generated quizzes per course topic
-- Track quiz performance and reinforce learning
+- Personalized dashboard with total points, level, and statistics
+- Activity heatmap and calculated productivity insights (peak hours, consistency)
+- Digital certificates for completed courses
 
 ---
 
@@ -69,7 +72,8 @@ Coudy is a comprehensive student productivity platform that combines study partn
 | Spring Security + JWT | Authentication & authorization |
 | PostgreSQL | Database |
 | Spring Data JPA | ORM |
-| Claude API (Anthropic) | AI schedule generation & quiz creation |
+| Azure AI / GitHub Models (Llama-3.3-70B-Instruct) | AI quiz question generation from course slides |
+| Apache PDFBox / POI-OOXML | PDF/PowerPoint slide text extraction |
 | Swagger / OpenAPI | API documentation |
 
 ---
@@ -128,6 +132,15 @@ App runs on `http://localhost:5173`
 ### API Docs
 
 Swagger UI available at: `http://localhost:9096/swagger-ui.html`
+
+### Run with Docker
+
+```bash
+cp .env.example .env   # fill in AZURE_AI_API_KEY / API_KEY
+./deploy.sh            # or: docker compose up --build
+```
+
+Spins up Postgres, backend, and frontend containers. Frontend at `http://localhost:3000`, backend at `http://localhost:9096`.
 
 ---
 
