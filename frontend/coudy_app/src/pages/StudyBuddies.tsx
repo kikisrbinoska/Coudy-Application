@@ -325,6 +325,10 @@ const StudyBuddies = () => {
     }
   };
 
+  const setThreadMode = (mode: BuddyThread["mode"]) => {
+    setThread((current) => (current ? { ...current, mode } : current));
+  };
+
   const joinStudyCall = async (buddy: StudyBuddyCard) => {
     if (!buddy.id) return;
     setJoiningBuddyId(buddy.id);
@@ -826,10 +830,32 @@ const StudyBuddies = () => {
       <Dialog open={threadOpen} onOpenChange={setThreadOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>
-              {thread?.buddy.name ?? thread?.buddy.username}
-              {thread?.buddy.surname ? ` ${thread.buddy.surname}` : ""}{" "}
-              {thread?.mode === "messages" ? "Messages" : "Sessions"}
+            <DialogTitle className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <span>
+                {thread?.buddy.name ?? thread?.buddy.username}
+                {thread?.buddy.surname ? ` ${thread.buddy.surname}` : ""}{" "}
+                {thread?.mode === "messages" ? "Messages" : "Sessions"}
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant={thread?.mode === "messages" ? "default" : "outline"}
+                  size="sm"
+                  className={thread?.mode === "messages" ? "gradient-primary border-0" : "glass"}
+                  onClick={() => setThreadMode("messages")}
+                >
+                  Messages
+                </Button>
+                <Button
+                  type="button"
+                  variant={thread?.mode === "sessions" ? "default" : "outline"}
+                  size="sm"
+                  className={thread?.mode === "sessions" ? "gradient-primary border-0" : "glass"}
+                  onClick={() => setThreadMode("sessions")}
+                >
+                  Sessions
+                </Button>
+              </div>
             </DialogTitle>
           </DialogHeader>
 
@@ -839,95 +865,97 @@ const StudyBuddies = () => {
               <span className="ml-2 text-muted-foreground">Loading buddy details...</span>
             </div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold">Messages</h3>
-                  <Badge variant="outline" className="glass">{messages.length} total</Badge>
-                </div>
-                <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
-                  {messages.length > 0 ? (
-                    messages.map((message) => (
-                      <div key={message.id} className={`p-3 rounded-2xl glass ${message.sender_username === user?.username ? "ml-8" : "mr-8"}`}>
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm font-medium">
-                            {message.sender_name ?? message.sender_username ?? "Unknown"}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {formatAbsoluteDate(message.sent_at)}
-                          </span>
+            <div className="space-y-6">
+              {thread?.mode === "messages" ? (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold">Messages</h3>
+                    <Badge variant="outline" className="glass">{messages.length} total</Badge>
+                  </div>
+                  <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+                    {messages.length > 0 ? (
+                      messages.map((message) => (
+                        <div key={message.id} className={`p-3 rounded-2xl glass ${message.sender_username === user?.username ? "ml-8" : "mr-8"}`}>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-sm font-medium">
+                              {message.sender_name ?? message.sender_username ?? "Unknown"}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {formatAbsoluteDate(message.sent_at)}
+                            </span>
+                          </div>
+                          <p className="text-sm">{message.content}</p>
                         </div>
-                        <p className="text-sm">{message.content}</p>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-sm text-muted-foreground">No messages yet. Start the conversation.</p>
-                  )}
-                </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-muted-foreground">No messages yet. Start the conversation.</p>
+                    )}
+                  </div>
 
-                <div className="space-y-2">
-                  <Textarea
-                    value={messageDraft}
-                    onChange={(e) => setMessageDraft(e.target.value)}
-                    placeholder="Write a message..."
-                    rows={4}
-                  />
-                  <Button className="w-full gradient-primary border-0" onClick={sendMessage} disabled={!messageDraft.trim() || sendingMessage || !thread?.buddy.id}>
-                    {sendingMessage ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
-                    Send Message
-                  </Button>
+                  <div className="space-y-2">
+                    <Textarea
+                      value={messageDraft}
+                      onChange={(e) => setMessageDraft(e.target.value)}
+                      placeholder="Write a message..."
+                      rows={4}
+                    />
+                    <Button className="w-full gradient-primary border-0" onClick={sendMessage} disabled={!messageDraft.trim() || sendingMessage || !thread?.buddy.id}>
+                      {sendingMessage ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
+                      Send Message
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold">Sessions</h3>
+                    <Badge variant="outline" className="glass">{sessions.length} scheduled</Badge>
+                  </div>
 
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold">Sessions</h3>
-                  <Badge variant="outline" className="glass">{sessions.length} scheduled</Badge>
-                </div>
-
-                <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
-                  {sessions.length > 0 ? (
-                    sessions.map((session) => (
-                      <div key={session.id} className="p-3 glass rounded-2xl">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm font-medium">{formatRelativeDate(session.scheduled_time)}</span>
-                          <Badge>{session.status}</Badge>
+                  <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+                    {sessions.length > 0 ? (
+                      sessions.map((session) => (
+                        <div key={session.id} className="p-3 glass rounded-2xl">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-sm font-medium">{formatRelativeDate(session.scheduled_time)}</span>
+                            <Badge>{session.status}</Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground">{formatAbsoluteDate(session.scheduled_time)}</p>
+                          <p className="text-sm">Location: {session.location ?? "Online"}</p>
+                          <p className="text-sm">Duration: {session.duration_minutes ?? 60} min</p>
+                          {session.notes && <p className="text-sm text-muted-foreground mt-1">{session.notes}</p>}
                         </div>
-                        <p className="text-sm text-muted-foreground">{formatAbsoluteDate(session.scheduled_time)}</p>
-                        <p className="text-sm">Location: {session.location ?? "Online"}</p>
-                        <p className="text-sm">Duration: {session.duration_minutes ?? 60} min</p>
-                        {session.notes && <p className="text-sm text-muted-foreground mt-1">{session.notes}</p>}
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-sm text-muted-foreground">No sessions yet.</p>
-                  )}
-                </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-muted-foreground">No sessions yet.</p>
+                    )}
+                  </div>
 
-                <div className="space-y-2">
-                  <Input
-                    value={sessionLocation}
-                    onChange={(e) => setSessionLocation(e.target.value)}
-                    placeholder="Session location or online link"
-                  />
-                  <Input
-                    type="number"
-                    min="15"
-                    step="15"
-                    value={sessionMinutes}
-                    onChange={(e) => setSessionMinutes(parseInt(e.target.value, 10) || 60)}
-                    placeholder="Duration minutes"
-                  />
-                  <Button
-                    className="w-full gradient-primary border-0"
-                    onClick={() => thread?.buddy.id && joinStudyCall(thread.buddy)}
-                    disabled={!thread?.buddy.id || joiningBuddyId === thread.buddy.id}
-                  >
-                    {joiningBuddyId === thread?.buddy.id ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Video className="w-4 h-4 mr-2" />}
-                    Start Study Session
-                  </Button>
+                  <div className="space-y-2">
+                    <Input
+                      value={sessionLocation}
+                      onChange={(e) => setSessionLocation(e.target.value)}
+                      placeholder="Session location or online link"
+                    />
+                    <Input
+                      type="number"
+                      min="15"
+                      step="15"
+                      value={sessionMinutes}
+                      onChange={(e) => setSessionMinutes(parseInt(e.target.value, 10) || 60)}
+                      placeholder="Duration minutes"
+                    />
+                    <Button
+                      className="w-full gradient-primary border-0"
+                      onClick={() => thread?.buddy.id && joinStudyCall(thread.buddy)}
+                      disabled={!thread?.buddy.id || joiningBuddyId === thread.buddy.id}
+                    >
+                      {joiningBuddyId === thread?.buddy.id ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Video className="w-4 h-4 mr-2" />}
+                      Start Study Session
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
         </DialogContent>
