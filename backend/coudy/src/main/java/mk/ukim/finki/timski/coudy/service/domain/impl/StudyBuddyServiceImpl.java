@@ -323,6 +323,57 @@ public class StudyBuddyServiceImpl implements StudyBuddyService {
 
     @Override
     @Transactional
+    public BuddySessionDto acceptSession(User user, Long sessionId) {
+        BuddySession session = buddySessionRepository.findById(sessionId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Session not found"));
+
+        if (!isMember(session.getStudyBuddy(), user.getUsername())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You cannot accept this session");
+        }
+        if (session.getCreatedBy() == null || session.getCreatedBy().getUsername().equals(user.getUsername())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "You cannot accept your own session request");
+        }
+        if (session.getStatus() != SessionStatus.REQUESTED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Session is no longer pending");
+        }
+
+        session.setStatus(SessionStatus.SCHEDULED);
+        if (session.getReadAt() == null) {
+            session.setReadAt(LocalDateTime.now());
+        }
+
+        StudyBuddy buddy = session.getStudyBuddy();
+        buddy.setSessionCount((buddy.getSessionCount() == null ? 0 : buddy.getSessionCount()) + 1);
+        studyBuddyRepository.save(buddy);
+
+        return BuddySessionDto.from(buddySessionRepository.save(session));
+    }
+
+    @Override
+    @Transactional
+    public BuddySessionDto declineSession(User user, Long sessionId) {
+        BuddySession session = buddySessionRepository.findById(sessionId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Session not found"));
+
+        if (!isMember(session.getStudyBuddy(), user.getUsername())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You cannot decline this session");
+        }
+        if (session.getCreatedBy() == null || session.getCreatedBy().getUsername().equals(user.getUsername())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "You cannot decline your own session request");
+        }
+        if (session.getStatus() != SessionStatus.REQUESTED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Session is no longer pending");
+        }
+
+        session.setStatus(SessionStatus.CANCELLED);
+        if (session.getReadAt() == null) {
+            session.setReadAt(LocalDateTime.now());
+        }
+        return BuddySessionDto.from(buddySessionRepository.save(session));
+    }
+
+    @Override
+    @Transactional
     public void markBuddyMessagesRead(User user, Long buddyId) {
         StudyBuddy buddy = findOwnedBuddy(buddyId, user);
         buddyMessageRepository.markUnreadForBuddyAsRead(user.getUsername(), buddy.getId(), LocalDateTime.now());
@@ -339,15 +390,13 @@ public class StudyBuddyServiceImpl implements StudyBuddyService {
         session.setDurationMinutes(request.durationMinutes() != null ? request.durationMinutes() : 60);
         session.setAttendedUser1(false);
         session.setAttendedUser2(false);
-        session.setStatus(SessionStatus.SCHEDULED);
+        session.setStatus(SessionStatus.REQUESTED);
         session.setNotes(request.notes());
         session.setCreatedBy(user);
         session.setCreatedAt(LocalDateTime.now());
         session.setReadAt(null);
 
         BuddySession saved = buddySessionRepository.save(session);
-        buddy.setSessionCount((buddy.getSessionCount() == null ? 0 : buddy.getSessionCount()) + 1);
-        studyBuddyRepository.save(buddy);
         return BuddySessionDto.from(saved);
     }
 

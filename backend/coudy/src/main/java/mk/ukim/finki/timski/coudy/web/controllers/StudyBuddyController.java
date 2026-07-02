@@ -83,6 +83,16 @@ public class StudyBuddyController {
         studyBuddyService.removeBuddy(user, buddyId);
     }
 
+    @PostMapping("/sessions/{sessionId}/accept")
+    public BuddySessionDto acceptSession(@AuthenticationPrincipal User user, @PathVariable Long sessionId) {
+        return studyBuddyService.acceptSession(user, sessionId);
+    }
+
+    @PostMapping("/sessions/{sessionId}/decline")
+    public BuddySessionDto declineSession(@AuthenticationPrincipal User user, @PathVariable Long sessionId) {
+        return studyBuddyService.declineSession(user, sessionId);
+    }
+
     @GetMapping("/{buddyId}/sessions")
     public List<BuddySessionDto> sessions(@AuthenticationPrincipal User user, @PathVariable Long buddyId) {
         return studyBuddyService.sessions(user, buddyId);

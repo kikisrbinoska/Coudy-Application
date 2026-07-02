@@ -61,7 +61,8 @@ export interface BuddySession {
   rating_user1?: number;
   rating_user2?: number;
   notes?: string;
-  status: "SCHEDULED" | "COMPLETED" | "CANCELLED";
+  status: "REQUESTED" | "SCHEDULED" | "COMPLETED" | "CANCELLED";
+  created_by_username?: string;
 }
 
 export interface BuddyMessage {
@@ -127,6 +128,12 @@ const studyBuddyApi = {
 
   createSession: (buddyId: number, data: CreateBuddySessionRequest) =>
     axiosInstance.post<BuddySession>(`/study-buddies/${buddyId}/sessions`, data).then((r) => r.data),
+
+  acceptSession: (sessionId: number) =>
+    axiosInstance.post<BuddySession>(`/study-buddies/sessions/${sessionId}/accept`).then((r) => r.data),
+
+  declineSession: (sessionId: number) =>
+    axiosInstance.post<BuddySession>(`/study-buddies/sessions/${sessionId}/decline`).then((r) => r.data),
 
   messages: (buddyId: number) =>
     axiosInstance.get<BuddyMessage[]>(`/study-buddies/${buddyId}/messages`).then((r) => r.data),

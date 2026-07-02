@@ -25,6 +25,8 @@ public interface StudyBuddyService {
     BuddyConnectionRequestDto cancelRequest(User user, Long requestId);
     void removeBuddy(User user, Long buddyId);
     List<BuddySessionDto> sessions(User user, Long buddyId);
+    BuddySessionDto acceptSession(User user, Long sessionId);
+    BuddySessionDto declineSession(User user, Long sessionId);
     BuddySessionDto createSession(User user, Long buddyId, CreateBuddySessionRequest request);
     List<BuddyMessageDto> messages(User user, Long buddyId);
     void markBuddyMessagesRead(User user, Long buddyId);

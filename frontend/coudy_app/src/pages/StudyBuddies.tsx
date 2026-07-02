@@ -10,7 +10,7 @@ import studyBuddyApi, {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { BookOpen, Loader2, MessageCircle, RefreshCw, Search, Send, Star, Users, Video, Trash2 } from "lucide-react";
@@ -88,8 +88,9 @@ const StudyBuddies = () => {
   const [messageDraft, setMessageDraft] = useState("");
   const [sendingMessage, setSendingMessage] = useState(false);
   const [joiningBuddyId, setJoiningBuddyId] = useState<number | null>(null);
+  const [sessionActionId, setSessionActionId] = useState<number | null>(null);
   const [removingBuddyId, setRemovingBuddyId] = useState<number | null>(null);
-  const [sessionLocation, setSessionLocation] = useState("Online study call");
+  const [sessionLocation, setSessionLocation] = useState("");
   const [sessionMinutes, setSessionMinutes] = useState(60);
   const requestRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const [pendingFocusRequestId, setPendingFocusRequestId] = useState<number | null>(null);
@@ -331,17 +332,22 @@ const StudyBuddies = () => {
 
   const joinStudyCall = async (buddy: StudyBuddyCard) => {
     if (!buddy.id) return;
+    const sessionLink = sessionLocation.trim();
+    if (!sessionLink) {
+      toast({ title: "Missing link", description: "Please add a Teams, Zoom, or Meet link first.", variant: "destructive" });
+      return;
+    }
     setJoiningBuddyId(buddy.id);
     try {
       await studyBuddyApi.createSession(buddy.id, {
         scheduled_time: toLocalDateTimeInput(new Date()),
-        location: sessionLocation,
+        location: sessionLink,
         duration_minutes: sessionMinutes,
-        notes: "Started from the Study Buddies page",
+        notes: "Requested from the Study Buddies page",
       });
       toast({
-        title: "Study call created",
-        description: `A ${sessionMinutes}-minute session was created for ${buddy.name ?? buddy.username}.`,
+        title: "Session requested",
+        description: `Your request was sent to ${buddy.name ?? buddy.username}.`,
       });
       await loadMine();
       if (thread?.buddy.id === buddy.id) {
@@ -349,10 +355,46 @@ const StudyBuddies = () => {
         setSessions(updatedSessions);
       }
     } catch (error) {
-      console.error("Failed to start study call:", error);
-      toast({ title: "Error", description: "Failed to start a study call.", variant: "destructive" });
+      console.error("Failed to request study session:", error);
+      toast({ title: "Error", description: "Failed to request a study session.", variant: "destructive" });
     } finally {
       setJoiningBuddyId(null);
+    }
+  };
+
+  const acceptSession = async (sessionId: number, buddyId?: number | null) => {
+    setSessionActionId(sessionId);
+    try {
+      await studyBuddyApi.acceptSession(sessionId);
+      toast({ title: "Session accepted", description: "The study session is now scheduled." });
+      await refreshAll();
+      if (thread?.buddy.id && buddyId === thread.buddy.id) {
+        const updatedSessions = await studyBuddyApi.sessions(thread.buddy.id);
+        setSessions(updatedSessions);
+      }
+    } catch (error) {
+      console.error("Failed to accept session:", error);
+      toast({ title: "Error", description: "Failed to accept the session.", variant: "destructive" });
+    } finally {
+      setSessionActionId(null);
+    }
+  };
+
+  const declineSession = async (sessionId: number, buddyId?: number | null) => {
+    setSessionActionId(sessionId);
+    try {
+      await studyBuddyApi.declineSession(sessionId);
+      toast({ title: "Session declined", description: "The session request was declined." });
+      await refreshAll();
+      if (thread?.buddy.id && buddyId === thread.buddy.id) {
+        const updatedSessions = await studyBuddyApi.sessions(thread.buddy.id);
+        setSessions(updatedSessions);
+      }
+    } catch (error) {
+      console.error("Failed to decline session:", error);
+      toast({ title: "Error", description: "Failed to decline the session.", variant: "destructive" });
+    } finally {
+      setSessionActionId(null);
     }
   };
 
@@ -777,7 +819,7 @@ const StudyBuddies = () => {
                         <p className="text-sm text-muted-foreground">
                           {buddy.courses[0] ?? buddy.major ?? "Study buddy"}
                         </p>
-                        <p className="text-sm mt-1">📊 {buddy.session_count ?? 0} sessions completed</p>
+                      <p className="text-sm mt-1">📊 {buddy.session_count ?? 0} sessions scheduled</p>
                         <p className="text-sm text-primary font-medium mt-1">
                           Next: {buddy.next_session_at ? `${formatRelativeDate(buddy.next_session_at)} • ${formatAbsoluteDate(buddy.next_session_at)}` : "No session scheduled"}
                         </p>
@@ -795,13 +837,13 @@ const StudyBuddies = () => {
                         ) : (
                           <Video className="w-5 h-5 mr-2" />
                         )}
-                        Start Study Session
+                        Request Session
                       </Button>
                       <Button
                         variant="outline"
                         size="lg"
                         className="glass"
-                        onClick={() => openThread(buddy, "messages")}
+                        onClick={() => openThread(buddy, "sessions")}
                       >
                         <MessageCircle className="w-5 h-5" />
                       </Button>
@@ -857,6 +899,9 @@ const StudyBuddies = () => {
                 </Button>
               </div>
             </DialogTitle>
+            <DialogDescription>
+              Switch between chat and session details for this study buddy.
+            </DialogDescription>
           </DialogHeader>
 
           {threadLoading ? (
@@ -922,8 +967,53 @@ const StudyBuddies = () => {
                           </div>
                           <p className="text-sm text-muted-foreground">{formatAbsoluteDate(session.scheduled_time)}</p>
                           <p className="text-sm">Location: {session.location ?? "Online"}</p>
+                          {session.location?.startsWith("http") && (
+                            <p className="text-sm">
+                              Link:{" "}
+                              <a
+                                href={session.location}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-primary underline"
+                              >
+                                Open meeting
+                              </a>
+                            </p>
+                          )}
                           <p className="text-sm">Duration: {session.duration_minutes ?? 60} min</p>
                           {session.notes && <p className="text-sm text-muted-foreground mt-1">{session.notes}</p>}
+                          {session.status === "REQUESTED" && session.created_by_username === user?.username && (
+                            <p className="text-xs text-muted-foreground mt-2">Waiting for the other person to accept.</p>
+                          )}
+                          {session.status === "REQUESTED" && session.created_by_username !== user?.username && (
+                            <div className="flex gap-2 mt-3">
+                              <Button
+                                className="gradient-primary border-0"
+                                onClick={() => acceptSession(session.id, session.buddy_id)}
+                                disabled={sessionActionId === session.id}
+                              >
+                                {sessionActionId === session.id ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                                Accept
+                              </Button>
+                              <Button
+                                variant="outline"
+                                className="glass"
+                                onClick={() => declineSession(session.id, session.buddy_id)}
+                                disabled={sessionActionId === session.id}
+                              >
+                                Decline
+                              </Button>
+                            </div>
+                          )}
+                          {session.status === "SCHEDULED" && session.location?.startsWith("http") && (
+                            <div className="mt-3">
+                              <Button asChild className="gradient-primary border-0">
+                                <a href={session.location} target="_blank" rel="noreferrer">
+                                  Join Session
+                                </a>
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       ))
                     ) : (
@@ -935,7 +1025,7 @@ const StudyBuddies = () => {
                     <Input
                       value={sessionLocation}
                       onChange={(e) => setSessionLocation(e.target.value)}
-                      placeholder="Session location or online link"
+                      placeholder="Paste a Teams, Zoom, or Google Meet link"
                     />
                     <Input
                       type="number"
@@ -948,10 +1038,10 @@ const StudyBuddies = () => {
                     <Button
                       className="w-full gradient-primary border-0"
                       onClick={() => thread?.buddy.id && joinStudyCall(thread.buddy)}
-                      disabled={!thread?.buddy.id || joiningBuddyId === thread.buddy.id}
+                      disabled={!thread?.buddy.id || joiningBuddyId === thread.buddy.id || !sessionLocation.trim()}
                     >
                       {joiningBuddyId === thread?.buddy.id ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Video className="w-4 h-4 mr-2" />}
-                      Start Study Session
+                      Request Study Session
                     </Button>
                   </div>
                 </div>
