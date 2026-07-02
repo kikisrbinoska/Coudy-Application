@@ -116,6 +116,9 @@ const studyBuddyApi = {
   declineRequest: (requestId: number) =>
     axiosInstance.post<BuddyConnectionRequest>(`/study-buddies/requests/${requestId}/decline`).then((r) => r.data),
 
+  cancelRequest: (requestId: number) =>
+    axiosInstance.post<BuddyConnectionRequest>(`/study-buddies/requests/${requestId}/cancel`).then((r) => r.data),
+
   removeBuddy: (buddyId: number) =>
     axiosInstance.delete<void>(`/study-buddies/${buddyId}`).then((r) => r.data),
 

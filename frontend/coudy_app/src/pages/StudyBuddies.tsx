@@ -70,6 +70,7 @@ const StudyBuddies = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<"discover" | "requests" | "mybuddies">("discover");
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
   const [discoverBuddies, setDiscoverBuddies] = useState<StudyBuddyCard[]>([]);
   const [myBuddies, setMyBuddies] = useState<StudyBuddyCard[]>([]);
   const [incomingRequests, setIncomingRequests] = useState<BuddyConnectionRequest[]>([]);
@@ -292,6 +293,23 @@ const StudyBuddies = () => {
     }
   };
 
+  const cancelRequest = async (request: BuddyConnectionRequest) => {
+    setRequestActionId(request.id);
+    try {
+      await studyBuddyApi.cancelRequest(request.id);
+      toast({
+        title: "Request withdrawn",
+        description: `Your request to ${request.receiver_name ?? request.receiver_username} was cancelled.`,
+      });
+      await refreshAll();
+    } catch (error) {
+      console.error("Failed to cancel request:", error);
+      toast({ title: "Error", description: "Failed to withdraw the request.", variant: "destructive" });
+    } finally {
+      setRequestActionId(null);
+    }
+  };
+
   const sendMessage = async () => {
     if (!thread?.buddy.id || !messageDraft.trim()) return;
     setSendingMessage(true);
@@ -386,8 +404,11 @@ const StudyBuddies = () => {
       .filter(Boolean)
       .join(" ")
       .toLowerCase();
-    return haystack.includes(searchQuery.toLowerCase());
+    const matchesSubject = !selectedSubject || buddy.courses.includes(selectedSubject);
+    return matchesSubject && haystack.includes(searchQuery.toLowerCase());
   });
+
+  const filteredMyBuddies = myBuddies.filter((buddy) => !selectedSubject || buddy.courses.includes(selectedSubject));
 
   return (
     <div className="min-h-screen p-4 md:p-8">
@@ -405,7 +426,12 @@ const StudyBuddies = () => {
             <div className="flex gap-2">
               <Button
                 variant={activeTab === "discover" ? "default" : "ghost"}
-                onClick={() => setActiveTab("discover")}
+                onClick={() => {
+                  setActiveTab("discover");
+                  const nextParams = new URLSearchParams(searchParams);
+                  nextParams.set("tab", "discover");
+                  setSearchParams(nextParams, { replace: true });
+                }}
                 className={activeTab === "discover" ? "gradient-primary border-0" : ""}
               >
                 <Search className="w-4 h-4 mr-2" />
@@ -413,7 +439,12 @@ const StudyBuddies = () => {
               </Button>
               <Button
                 variant={activeTab === "requests" ? "default" : "ghost"}
-                onClick={() => setActiveTab("requests")}
+                onClick={() => {
+                  setActiveTab("requests");
+                  const nextParams = new URLSearchParams(searchParams);
+                  nextParams.set("tab", "requests");
+                  setSearchParams(nextParams, { replace: true });
+                }}
                 className={activeTab === "requests" ? "gradient-primary border-0" : ""}
               >
                 <Users className="w-4 h-4 mr-2" />
@@ -424,7 +455,12 @@ const StudyBuddies = () => {
               </Button>
               <Button
                 variant={activeTab === "mybuddies" ? "default" : "ghost"}
-                onClick={() => setActiveTab("mybuddies")}
+                onClick={() => {
+                  setActiveTab("mybuddies");
+                  const nextParams = new URLSearchParams(searchParams);
+                  nextParams.set("tab", "mybuddies");
+                  setSearchParams(nextParams, { replace: true });
+                }}
                 className={activeTab === "mybuddies" ? "gradient-primary border-0" : ""}
               >
                 <Users className="w-4 h-4 mr-2" />
@@ -444,7 +480,17 @@ const StudyBuddies = () => {
               subjects.map((subject, index) => (
                 <button
                   key={subject.name}
-                  className="glass p-4 rounded-2xl hover:scale-105 transition-transform text-left"
+                  type="button"
+                  onClick={() => {
+                    setSelectedSubject((current) => (current === subject.name ? null : subject.name));
+                    setActiveTab("discover");
+                    const nextParams = new URLSearchParams(searchParams);
+                    nextParams.set("tab", "discover");
+                    setSearchParams(nextParams, { replace: true });
+                  }}
+                  className={`glass p-4 rounded-2xl hover:scale-105 transition-transform text-left ${
+                    selectedSubject === subject.name ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""
+                  }`}
                 >
                   <div className={`w-12 h-12 rounded-xl ${index % 3 === 0 ? "bg-primary" : index % 3 === 1 ? "bg-secondary" : "bg-accent"} mb-3 flex items-center justify-center`}>
                     <BookOpen className="w-6 h-6 text-white" />
@@ -476,11 +522,20 @@ const StudyBuddies = () => {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-bold">Top Matches for You</h2>
-                <Button variant="outline" className="glass" onClick={() => { loadDiscover(); loadMine(); }}>
+                <Button variant="outline" className="glass" onClick={refreshAll}>
                   <RefreshCw className="w-4 h-4 mr-2" />
                   Refresh
                 </Button>
               </div>
+              {selectedSubject && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <span>Filtering by:</span>
+                  <Badge className="gradient-primary border-0">{selectedSubject}</Badge>
+                  <Button variant="ghost" size="sm" onClick={() => setSelectedSubject(null)}>
+                    Clear
+                  </Button>
+                </div>
+              )}
 
               {loadingDiscover ? (
                 <div className="flex items-center justify-center p-8">
@@ -646,6 +701,21 @@ const StudyBuddies = () => {
                       <p className="text-xs text-muted-foreground">
                         Sent {formatAbsoluteDate(request.created_at)}
                       </p>
+                      {request.status === "PENDING" && (
+                        <div className="flex justify-end">
+                          <Button
+                            variant="outline"
+                            className="glass text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => cancelRequest(request)}
+                            disabled={requestActionId === request.id}
+                          >
+                            {requestActionId === request.id ? (
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            ) : null}
+                            Withdraw
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   ))
                 )}
@@ -669,12 +739,16 @@ const StudyBuddies = () => {
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
                 <span className="ml-2 text-muted-foreground">Loading your buddies...</span>
               </div>
-            ) : myBuddies.length === 0 ? (
+            ) : filteredMyBuddies.length === 0 ? (
               <Card className="glass-card p-8 border-0 text-center">
-                <p className="text-muted-foreground">You have no study buddies yet. Find some in Discover.</p>
+                <p className="text-muted-foreground">
+                  {selectedSubject
+                    ? `You do not have any study buddies in ${selectedSubject} yet.`
+                    : "You have no study buddies yet. Find some in Discover."}
+                </p>
               </Card>
             ) : (
-              myBuddies.map((buddy) => (
+              filteredMyBuddies.map((buddy) => (
                 <Card key={buddy.id ?? buddy.username} className="glass-card p-6 border-0">
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div className="flex items-center gap-4">

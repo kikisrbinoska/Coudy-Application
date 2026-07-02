@@ -22,6 +22,7 @@ public interface StudyBuddyService {
     BuddyConnectionRequestDto connect(User user, String otherUsername);
     BuddyConnectionRequestDto acceptRequest(User user, Long requestId);
     BuddyConnectionRequestDto declineRequest(User user, Long requestId);
+    BuddyConnectionRequestDto cancelRequest(User user, Long requestId);
     void removeBuddy(User user, Long buddyId);
     List<BuddySessionDto> sessions(User user, Long buddyId);
     BuddySessionDto createSession(User user, Long buddyId, CreateBuddySessionRequest request);

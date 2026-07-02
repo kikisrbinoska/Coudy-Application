@@ -73,6 +73,11 @@ public class StudyBuddyController {
         return studyBuddyService.declineRequest(user, requestId);
     }
 
+    @PostMapping("/requests/{requestId}/cancel")
+    public BuddyConnectionRequestDto cancel(@AuthenticationPrincipal User user, @PathVariable Long requestId) {
+        return studyBuddyService.cancelRequest(user, requestId);
+    }
+
     @DeleteMapping("/{buddyId}")
     public void removeBuddy(@AuthenticationPrincipal User user, @PathVariable Long buddyId) {
         studyBuddyService.removeBuddy(user, buddyId);

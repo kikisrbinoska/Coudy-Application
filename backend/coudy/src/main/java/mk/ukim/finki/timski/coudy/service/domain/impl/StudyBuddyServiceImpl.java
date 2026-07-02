@@ -288,6 +288,23 @@ public class StudyBuddyServiceImpl implements StudyBuddyService {
     }
 
     @Override
+    public BuddyConnectionRequestDto cancelRequest(User user, Long requestId) {
+        BuddyConnectionRequest request = buddyConnectionRequestRepository.findById(requestId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found"));
+
+        if (!request.getSender().getUsername().equals(user.getUsername())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You cannot cancel this request");
+        }
+        if (request.getStatus() != BuddyRequestStatus.PENDING) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Request is no longer pending");
+        }
+
+        request.setStatus(BuddyRequestStatus.CANCELLED);
+        request.setRespondedAt(LocalDateTime.now());
+        return BuddyConnectionRequestDto.from(buddyConnectionRequestRepository.save(request));
+    }
+
+    @Override
     @Transactional
     public void removeBuddy(User user, Long buddyId) {
         StudyBuddy buddy = findOwnedBuddy(buddyId, user);
